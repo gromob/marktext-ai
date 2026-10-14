@@ -26,7 +26,15 @@ Homebrew 사용 시 `brew install --cask codex`로 CLI를 설치하고 `codex lo
 
 로컬 개발 과정에서 AI 단위 테스트 27개와 Electron 화면 테스트 10개, TypeScript 검사를 통과했다. 문단·목록 화면 테스트 8개와 한글 입력 조합 보호 테스트 2개를 추가로 통과했다. ESLint는 오류 0개였으며 기반 프로젝트의 경고 166개가 남아 있었다. 실제 Codex 모델을 통한 후속 편집, 변경 설명, 문서 반영 및 되돌리기도 확인했다.
 
-이번 공개판의 패키지 실행·서명·체크섬 확인 결과는 릴리스 게시 시 기록한다.
+이번 공개판도 AI 단위 테스트 27개, TypeScript 검사와 ESLint(오류 0개)를 통과했다. DMG에서 앱을 꺼내 별도 사용자 설정으로 실행한 뒤 한국어 Markdown 문서, AI 채팅창·모델 선택 UI와 연결 인터페이스를 확인했다. 렌더러 오류는 0개였다. 앱 버전, 코드 서명, 원본·제3자 라이선스 동봉, DMG 및 ZIP 무결성, SHA-256 대조도 통과했다.
+
+## 배포 파일
+
+- `MarkText-AI-0.21.2-ai.1-arm64.dmg`: Apple Silicon 설치판.
+- `MarkText-AI-0.21.2-ai.1-arm64.zip`: 같은 앱의 ZIP 배포본.
+- `MarkText-AI-0.21.2-ai.1-source.tar.gz`: 이 릴리스 태그의 수정된 전체 소스와 빌드 스크립트.
+- `MarkText-AI-install.ko.txt`: 설치·AI 연결·기본 Markdown 앱 설정 안내.
+- `SHA256SUMS.txt`: 위 파일들의 SHA-256 체크섬.
 
 ## 원본과 라이선스
 
