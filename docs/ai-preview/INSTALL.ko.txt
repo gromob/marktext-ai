@@ -1,16 +1,17 @@
 MarkText AI 설치 안내
 
-버전: 0.21.2-ai.1 (첫 공개 미리보기)
+버전: 0.21.2-ai.2 (첫 공개 미리보기)
 대상: Apple Silicon Mac (M 시리즈), macOS 12 이상
-구성: Markdown 보기·편집, AI 채팅 편집, 모델 선택, 채팅창 너비 조절, 문단 들여쓰기
+구성: Markdown 보기·편집, AI 채팅 편집과 되돌리기, 모델 선택, 채팅창 너비 조절, 문단 들여쓰기
+아이콘: MarkText AI 전용 앱 아이콘
 
 MarkText AI는 MarkText v0.21.2를 기반으로 독립적으로 개발·배포하는 커뮤니티 fork다.
 수정된 소스: https://github.com/yunju-baek/marktext-ai
-다운로드: https://github.com/yunju-baek/marktext-ai/releases/tag/v0.21.2-ai.1
+다운로드: https://github.com/yunju-baek/marktext-ai/releases/tag/v0.21.2-ai.2
 
 1. 앱 설치
 
-MarkText-AI-0.21.2-ai.1-arm64.dmg를 열고 MarkText AI.app을 Applications 폴더로 드래그한다.
+MarkText-AI-0.21.2-ai.2-arm64.dmg를 열고 MarkText AI.app을 Applications 폴더로 드래그한다.
 복사가 끝나면 응용 프로그램 폴더에서 MarkText AI를 실행한다.
 설치 디스크는 Finder에서 추출한다.
 
@@ -38,6 +39,11 @@ Codex CLI 설치 안내: https://developers.openai.com/codex/cli/
 이 앱의 AI 기능은 Codex CLI 0.159.2에서 확인했다.
 로그인을 마치면 MarkText AI를 다시 실행하고 오른쪽 위 AI 버튼을 누른다.
 모델을 선택하고 채팅에 편집 요청을 입력한다.
+
+AI 요청 시 현재 문서 전체와 최근 대화가 선택한 Codex 모델로 전달된다.
+본문은 최대 300,000자, 편집 요청은 최대 8,000자, 최근 대화는 최대 10개·합계 24,000자다.
+대화 메시지 하나는 8,000자 이내로 전달하며, 응답 대기 한도는 3분이다.
+모델과 채팅창 너비는 로컬에 저장하고, 대화는 실행 중인 앱 메모리에서 문서별로 유지한다.
 
 배포 파일에는 앱과 설치 안내를 담았다. 문서와 계정 로그인 정보는 각 Mac에서 별도로 관리한다.
 

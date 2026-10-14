@@ -1,6 +1,6 @@
 {
   "name": "marktext-monorepo",
-  "version": "0.21.2-ai.1",
+  "version": "0.21.2-ai.2",
   "description": "MarkText AI — an independent AI editing fork of MarkText",
   "private": true,
   "homepage": "https://github.com/yunju-baek/marktext-ai",
