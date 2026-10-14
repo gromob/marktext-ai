@@ -1,12 +1,12 @@
 name: Bug Report
-description: Create a bug report to help us improve MarkText
+description: Report a problem with MarkText AI
 title: '[Bug] '
 labels: ['bug', 'triage']
 body:
   - type: markdown
     attributes:
       value: |
-        **Before reporting:** Search [existing issues](https://github.com/marktext/marktext/issues) to avoid duplicates. If you find a match, use 👍 instead of opening a new issue.
+        **Before reporting:** Search [existing issues](https://github.com/yunju-baek/marktext-ai/issues) to avoid duplicates. If you find a match, use 👍 instead of opening a new issue.
 
   - type: textarea
     id: description
@@ -67,8 +67,8 @@ body:
   - type: input
     id: marktext-version
     attributes:
-      label: MarkText Version
-      placeholder: 'e.g. 0.17.1'
+      label: MarkText AI Version
+      placeholder: 'e.g. 0.21.2-ai.1'
     validations:
       required: true
 

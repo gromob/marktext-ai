@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 
+import type ParagraphContent from '..';
 import type Content from '../../../base/content';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Muya } from '../../../../muya';
@@ -242,5 +243,168 @@ describe('paragraphContent.tabHandler — jump past a closing inline marker', ()
         // Caret was past the closing marker, so insertTab runs.
         expect(text).toBe(`**bold**${SPACE.repeat(4)}`);
         expect(content.getCursor()!.start.offset).toBe(12);
+    });
+});
+
+describe('paragraphContent.tabHandler — opt-in paragraph indentation', () => {
+    const indent = '\u00A0'.repeat(4);
+
+    function pressTab(content: Content, anchor: number, focus = anchor, shiftKey = false) {
+        content.setCursor(anchor, focus, true);
+        content.tabHandler(new KeyboardEvent('keydown', { key: 'Tab', shiftKey }));
+    }
+
+    it('indents a line from a mid-text caret and keeps its Korean/emoji offset', () => {
+        const text = '한글🙂 문장';
+        const muya = bootMuya(text, { indentParagraphsWithTab: true });
+        const content = contentByText(muya, text);
+
+        pressTab(content, 4);
+
+        expect(content.text).toBe(indent + text);
+        expect(content.getCursor()!.start.offset).toBe(8);
+        expect(muya.getState()[0].name).toBe('paragraph');
+        const markdown = muya.getMarkdown();
+        const reopened = bootMuya(markdown, { indentParagraphsWithTab: true });
+        expect(reopened.getState()).toEqual(muya.getState());
+        expect(reopened.getMarkdown()).toBe(markdown);
+    });
+
+    it('keeps a blank line followed by repeated Tabs and Korean input as a paragraph', () => {
+        const muya = bootMuya('', { indentParagraphsWithTab: true });
+        const content = contentByText(muya, '');
+        pressTab(content, 0);
+        pressTab(content, 4);
+        expect(content.text).toBe(indent + indent);
+
+        content.text += '안녕하세요🙂';
+        content.setCursor(content.text.length, content.text.length, true);
+        (content as ParagraphContent).checkInlineUpdate();
+        muya.flush();
+
+        expect(muya.getState()[0].name).toBe('paragraph');
+        expect(blockText(muya.getState(), 0)).toBe(`${indent + indent}안녕하세요🙂`);
+        const reopened = bootMuya(muya.getMarkdown(), { indentParagraphsWithTab: true });
+        expect(reopened.getState()).toEqual(muya.getState());
+    });
+
+    it('outdents one level, clamps a caret in removed whitespace, and stops at zero', () => {
+        const muya = bootMuya(`${indent}${indent}문장`, { indentParagraphsWithTab: true });
+        const content = contentByText(muya, `${indent}${indent}문장`);
+        pressTab(content, 9, 9, true);
+        expect(content.text).toBe(`${indent}문장`);
+        expect(content.getCursor()!.start.offset).toBe(5);
+
+        pressTab(content, 2, 2, true);
+        expect(content.text).toBe('문장');
+        expect(content.getCursor()!.start.offset).toBe(0);
+        const undoCount = muya.getHistory().stack.undo.length;
+        pressTab(content, 0, 0, true);
+        expect(content.text).toBe('문장');
+        expect(muya.getHistory().stack.undo).toHaveLength(undoCount);
+    });
+
+    it('honors tabSize and removes a partial mixed-space indent', () => {
+        const muya = bootMuya('문장', { indentParagraphsWithTab: true, tabSize: 2 });
+        const content = contentByText(muya, '문장');
+        pressTab(content, 1);
+        expect(content.text).toBe('\u00A0\u00A0문장');
+        expect(content.getCursor()!.start.offset).toBe(3);
+
+        content.text = ' \u00A0 문장';
+        pressTab(content, 4, 4, true);
+        expect(content.text).toBe(' 문장');
+        expect(content.getCursor()!.start.offset).toBe(2);
+        pressTab(content, 2, 2, true);
+        expect(content.text).toBe('문장');
+        expect(content.getCursor()!.start.offset).toBe(1);
+    });
+
+    it('preserves a backward selection across indented lines and excludes the next-line boundary', () => {
+        const text = '첫🙂 줄\n둘째 줄\n마지막';
+        const muya = bootMuya(text, { indentParagraphsWithTab: true });
+        const content = contentByText(muya, text);
+        const end = text.indexOf('마지막');
+
+        pressTab(content, end, 1);
+
+        expect(content.text).toBe(`${indent}첫🙂 줄\n${indent}둘째 줄\n마지막`);
+        expect(content.getCursor()!.anchor.offset).toBe(end + 8);
+        expect(content.getCursor()!.focus.offset).toBe(5);
+        pressTab(content, end + 8, 5, true);
+        expect(content.text).toBe(text);
+        expect(content.getCursor()!.anchor.offset).toBe(end);
+        expect(content.getCursor()!.focus.offset).toBe(1);
+    });
+
+    it('undoes each Tab separately from pending typing and restores selection on undo/redo', () => {
+        const muya = bootMuya('문장', { indentParagraphsWithTab: true });
+        const content = contentByText(muya, '문장');
+        content.text += '🙂';
+        pressTab(content, 4, 2);
+        pressTab(content, 8, 6);
+        expect(content.text).toBe(`${indent + indent}문장🙂`);
+
+        muya.undo();
+        expect(content.text).toBe(`${indent}문장🙂`);
+        expect(content.getCursor()!.anchor.offset).toBe(8);
+        expect(content.getCursor()!.focus.offset).toBe(6);
+        muya.undo();
+        expect(content.text).toBe('문장🙂');
+        expect(content.getCursor()!.anchor.offset).toBe(4);
+        expect(content.getCursor()!.focus.offset).toBe(2);
+        muya.redo();
+        expect(content.text).toBe(`${indent}문장🙂`);
+        expect(content.getCursor()!.anchor.offset).toBe(8);
+        expect(content.getCursor()!.focus.offset).toBe(6);
+    });
+
+    it.each([
+        ['- first\n- second\n', '- first\n  - second\n'],
+        ['1. first\n2. second\n', '1. first\n   1. second\n'],
+        ['- [ ] first\n- [ ] second\n', '- [ ] first\n  - [ ] second\n'],
+    ])('preserves list indentation with the option enabled: %s', (markdown, nested) => {
+        const muya = bootMuya(markdown, { indentParagraphsWithTab: true });
+        pressTab(contentByText(muya, 'second'), 2);
+        muya.flush();
+        expect(muya.getMarkdown()).toBe(nested);
+        pressTab(contentByText(muya, 'second'), 2, 2, true);
+        muya.flush();
+        expect(muya.getMarkdown()).toBe(markdown);
+        expect(muya.getMarkdown()).not.toContain('\u00A0');
+    });
+
+    it('keeps ordinary-space imported code as code with the option enabled', () => {
+        const muya = bootMuya('    코드 내용\n', { indentParagraphsWithTab: true });
+        expect(muya.getState()[0].name).toBe('code-block');
+        expect(blockText(muya.getState(), 0)).toBe('코드 내용');
+    });
+
+    it('keeps paragraphs inside a quote nested in a list on the existing Tab path', () => {
+        const muya = bootMuya('- > 문장\n', { indentParagraphsWithTab: true });
+        const content = contentByText(muya, '문장');
+        pressTab(content, 1);
+        muya.flush();
+        expect(content.text).toBe('문    장');
+        expect(muya.getMarkdown()).not.toContain('\u00A0');
+    });
+
+    it.each([
+        ['# 제목', 'atx-heading'],
+        ['- 항목', 'bullet-list'],
+    ])('outdents %s safely before later input converts Markdown syntax', (text, blockName) => {
+        const muya = bootMuya(indent + text, { indentParagraphsWithTab: true });
+        const content = contentByText(muya, indent + text);
+        pressTab(content, content.text.length, content.text.length, true);
+        expect(content.text).toBe(text);
+        expect(content.getCursor()!.start.offset).toBe(text.length);
+
+        content.text += '추가';
+        content.setCursor(content.text.length, content.text.length, true);
+        (content as ParagraphContent).checkInlineUpdate();
+        muya.flush();
+        expect(muya.getState()[0].name).toBe(blockName);
+        expect(muya.getMarkdown()).toBe(`${text}추가\n`);
+        expect(muya.editor.selection.getSelection()!.anchor.block.domNode!.isConnected).toBe(true);
     });
 });

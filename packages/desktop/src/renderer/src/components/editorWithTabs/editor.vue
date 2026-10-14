@@ -123,6 +123,8 @@ import { findActiveHeadingSlug, type HeadingPosition } from '@/util/findActiveHe
 import { addCommonStyle, setEditorWidth } from '@/util/theme'
 import { usePreferencesStore } from '@/store/preferences'
 import { useEditorStore } from '@/store/editor'
+import { useAiEditorStore } from '@/store/aiEditor'
+import { rangeFromStateSelection } from '@/util/aiSelection'
 import { useProjectStore } from '@/store/project'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
@@ -176,6 +178,7 @@ const props = defineProps<{
 // Get stores
 const preferencesStore = usePreferencesStore()
 const editorStore = useEditorStore()
+const aiEditorStore = useAiEditorStore()
 const projectStore = useProjectStore()
 
 // Use storeToRefs to extract reactive properties from the stores
@@ -271,6 +274,36 @@ let spellchecker: SpellChecker | null = null
 let switchLanguageCommand: SpellcheckerLanguageCommand | null = null
 // The engine has no `scroll` event; we listen on the scroll container directly.
 let scrollHandler: ((e: Event) => void) | null = null
+let aiRevision = 0
+let unregisterAiEditor: (() => void) | undefined
+let aiSelection: { documentId: string; revision: number; context: IHistorySelection } | null = null
+
+// Sidebar focus clears the DOM range; keep only immutable paths and offsets.
+const rememberAiSelection = () => {
+  const muya = editor.value
+  const native = document.getSelection()
+  if (
+    sourceCode.value ||
+    !muya ||
+    !muya.hasFocus() ||
+    !currentFile.value ||
+    !native?.anchorNode ||
+    !native.focusNode ||
+    !muya.domNode.contains(native.anchorNode) ||
+    !muya.domNode.contains(native.focusNode)
+  ) return
+  const selection = muya.getSelection()
+  if (!selection) return
+  aiSelection = {
+    documentId: currentFile.value.id,
+    revision: aiRevision,
+    context: {
+      ...selection,
+      anchor: { path: [...selection.anchor.path], offset: selection.anchor.offset },
+      focus: { path: [...selection.focus.path], offset: selection.focus.offset }
+    }
+  }
+}
 
 // The engine's undo/redo history (`getHistory()`) has a different shape than
 // the desktop store's `tab.history` (which drives the save/dirty tracking and
@@ -466,6 +499,8 @@ watch(focus, (value) => {
 // state for the CURRENT cursor context (a code block/table still disables some
 // items) rather than blanket-enabling everything (#3531).
 watch(sourceCode, (isSource) => {
+  aiRevision++
+  aiSelection = null
   const windowId = window.marktext?.env?.windowId ?? -1
   if (isSource) {
     window.electron.ipcRenderer.send('mt::set-editor-format-menus-enabled', windowId, false)
@@ -1485,6 +1520,8 @@ interface FileLoadedPayload {
 
 // listen for `open-single-file` event, it will call this method only when open a new file.
 const setMarkdownToEditor = (payload: unknown) => {
+  aiRevision++
+  aiSelection = null
   const { id, markdown: newMarkdown, cursor: newCursor } = (payload ?? {}) as FileLoadedPayload
   if (editor.value) {
     // `setContent` resets the document and clears the undo history; only set a
@@ -1530,6 +1567,8 @@ interface FileChangePayload {
 
 // listen for markdown change form source mode or change tabs etc
 const handleFileChange = (payload: unknown) => {
+  aiRevision++
+  aiSelection = null
   const {
     id,
     markdown: newMarkdown,
@@ -1772,6 +1811,7 @@ onMounted(() => {
     bulletListMarker: bulletListMarker.value,
     orderListDelimiter: orderListDelimiter.value,
     tabSize: tabSize.value,
+    indentParagraphsWithTab: true,
     fontSize: fontSize.value,
     lineHeight: lineHeight.value,
     editorFontFamily: resolveEditorFont(editorFontFamily.value),
@@ -1832,6 +1872,45 @@ onMounted(() => {
   // the document tree and instantiates the registered UI plugins).
   muya.init({ focus: editorStore.TAKE_OPEN_INTENT(currentFile.value?.pathname) !== false })
   editor.value = muya
+  unregisterAiEditor = aiEditorStore.registerAdapter('wysiwyg', {
+    isActive: () => !sourceCode.value && !!editor.value && !!currentFile.value,
+    readDocument: () => ({
+      documentId: currentFile.value!.id,
+      markdown: muya.getMarkdown(),
+      revision: aiRevision
+    }),
+    readSelection: () => {
+      rememberAiSelection()
+      if (
+        !aiSelection ||
+        aiSelection.documentId !== currentFile.value?.id ||
+        aiSelection.revision !== aiRevision
+      ) {
+        throw new Error('편집기에서 수정할 글을 먼저 선택해 주세요.')
+      }
+      return {
+        range: rangeFromStateSelection(
+          muya.getState(),
+          aiSelection.context,
+          muya.getMarkdown(),
+          (state) => muya.editor.jsonState.getMarkdownFromState(state)
+        ),
+        context: aiSelection.context
+      }
+    },
+    replace: (snapshot, markdown) => {
+      const changed = muya.replaceContent(
+        markdown,
+        (snapshot.selectionContext as IHistorySelection | undefined) ?? null
+      )
+      if (!changed) throw new Error('수정 내용이 현재 문서와 같습니다.')
+      muya.focus()
+    },
+    undo: () => {
+      muya.undo()
+      muya.focus()
+    }
+  })
   // The first document's content is set via constructor options, so no
   // `file-loaded` / `setMarkdownToEditor` runs for it — seed its TOC here.
   editorStore.UPDATE_TOC(muya.getTOC())
@@ -1901,6 +1980,7 @@ onMounted(() => {
   // block AST), so we compute it here — mirroring the legacy engine's
   // `dispatchChange` payload.
   editor.value.on('json-change', () => {
+    aiRevision++
     // There is a chance that this event is fired AFTER the tab is switched. If we purely rely on this.currentFile later on
     // it can cause invalid updates. Hence, we need the id to identify changes as part of each tab
     if (!currentFile.value || !editor.value) return
@@ -1986,6 +2066,7 @@ onMounted(() => {
   })
 
   editor.value.on('selection-change', (changes: MuyaChange) => {
+    rememberAiSelection()
     const y = (changes.cursorCoords?.y ?? null) as number | null
     if (y != null) {
       // Before the scrolling below: a 0-duration `animatedScrollTo` assigns
@@ -2028,11 +2109,16 @@ onMounted(() => {
   })
 
   document.addEventListener('keyup', keyup)
+  document.addEventListener('selectionchange', rememberAiSelection)
+  document.addEventListener('pointerdown', rememberAiSelection, true)
 
   setEditorWidth(editorLineWidth.value)
 })
 
 onBeforeUnmount(() => {
+  unregisterAiEditor?.()
+  document.removeEventListener('selectionchange', rememberAiSelection)
+  document.removeEventListener('pointerdown', rememberAiSelection, true)
   bus.off('file-loaded', setMarkdownToEditor)
   bus.off('invalidate-image-cache', handleInvalidateImageCache)
   bus.off('undo', handleUndo)

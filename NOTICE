@@ -1,0 +1,17 @@
+MarkText AI
+
+An independent community fork of MarkText with AI-assisted Markdown editing.
+Fork source and releases: https://github.com/yunju-baek/marktext-ai
+Upstream source: https://github.com/marktext/marktext
+Upstream base: v0.21.2, commit ae7a869c989950a3a56ce5c2f7fc0df12c652933
+
+Original work:
+Copyright (c) 2017-present Luo Ran
+Copyright (c) 2018-present MarkText Contributors
+
+AI fork modifications:
+Copyright (c) 2026 Yunju Baek
+
+Distributed under the MIT License. See LICENSE.txt in the app resources
+or LICENSE in the source repository. Third-party notices are provided in
+THIRD-PARTY-LICENSES.txt and the respective bundled dependency licenses.

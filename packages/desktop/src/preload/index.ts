@@ -10,6 +10,7 @@ import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import pathe from 'pathe'
 import { createPlatformPath } from 'common/filesystem/platformPath'
+import type { AiAPI } from '@shared/types/ai'
 
 import type {
   IpcInvokeChannels,
@@ -240,7 +241,15 @@ const diagramAPI = {
     invoke('mt::diagram::fetch-plantuml', server, encoded, format)
 }
 
+const aiAPI: AiAPI = {
+  status: () => invoke('mt::ai::status'),
+  models: () => invoke('mt::ai::models'),
+  rewrite: (request) => invoke('mt::ai::rewrite', request),
+  cancel: (requestId) => invoke('mt::ai::cancel', requestId)
+}
+
 const electronAPI = {
+  ai: aiAPI,
   ipcRenderer: ipcWrapper,
   shell: shellAPI,
   clipboard: clipboardAPI,

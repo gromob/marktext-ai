@@ -1,6 +1,6 @@
 import type { Muya } from '../../../index';
 import type { CodeEmojiMathToken, HTMLTagToken, ImageToken, LinkToken, ReferenceLinkToken, Token } from '../../../inlineRenderer/types';
-import type { IRenderCursor } from '../../../selection/types';
+import type { IContentCursor, IRenderCursor } from '../../../selection/types';
 import type {
     IBlockQuoteState,
     IBulletListState,
@@ -1055,6 +1055,62 @@ class ParagraphContent extends Format {
         }
     }
 
+    private _indentParagraph(event: KeyboardEvent, cursor: IContentCursor): boolean {
+        if (!this.muya.options.indentParagraphsWithTab || this.parent?.blockName !== 'paragraph')
+            return false;
+
+        for (let ancestor = this.parent.parent; ancestor; ancestor = ancestor.parent) {
+            if (['list-item', 'task-list-item', 'bullet-list', 'order-list', 'task-list'].includes(ancestor.blockName))
+                return false;
+        }
+
+        const { text, muya } = this;
+        const { start, end, anchor, focus } = cursor;
+        const { tabSize } = muya.options;
+        const edits: { offset: number; remove: number; insert: string }[] = [];
+        let lineStart = text.slice(0, start.offset).lastIndexOf('\n') + 1;
+        // A range ending at the next line's start belongs to the preceding line.
+        const lastOffset = end.offset > start.offset && text[end.offset - 1] === '\n'
+            ? end.offset - 1
+            : end.offset;
+
+        while (lineStart <= lastOffset) {
+            const remove = event.shiftKey
+                ? Math.min(tabSize, /^[ \u00A0]*/.exec(text.slice(lineStart))![0].length)
+                : 0;
+            const insert = event.shiftKey ? '' : '\u00A0'.repeat(tabSize);
+            if (remove || insert)
+                edits.push({ offset: lineStart, remove, insert });
+            const newline = text.indexOf('\n', lineStart);
+            if (newline === -1)
+                break;
+            lineStart = newline + 1;
+        }
+
+        if (edits.length === 0)
+            return true;
+
+        const mapOffset = (offset: number) => edits.reduce((mapped, edit) => {
+            if (offset < edit.offset)
+                return mapped;
+            return mapped + edit.insert.length - Math.min(edit.remove, offset - edit.offset);
+        }, offset);
+        let nextText = text;
+        for (const edit of edits.slice().reverse()) {
+            nextText = nextText.slice(0, edit.offset) + edit.insert
+                + nextText.slice(edit.offset + edit.remove);
+        }
+
+        // Flush each command separately so typing and repeated Tabs undo one at a time.
+        muya.flush();
+        muya.editor.history.cutoff(cursor);
+        this.text = nextText;
+        this.setCursor(mapOffset(anchor.offset), mapOffset(focus.offset), true);
+        muya.flush();
+        muya.editor.history.cutoff();
+        return true;
+    }
+
     private _checkCursorAtEndFormat(): Nullable<{ offset: number }> {
         const { offset } = this.getCursor()!.start;
         // TODO: add labels in tokenizer...
@@ -1101,9 +1157,12 @@ class ParagraphContent extends Format {
         if (!isKeyboardEvent(event))
             return;
 
-        const { start, end } = this.getCursor()!;
-        if (!start || !end)
+        const cursor = this.getCursor();
+        if (!cursor)
             return;
+        if (this._indentParagraph(event, cursor))
+            return;
+        const { start } = cursor;
 
         if (event.shiftKey) {
             const unindentType = this._getUnindentType();

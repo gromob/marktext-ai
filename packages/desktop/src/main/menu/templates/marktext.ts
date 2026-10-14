@@ -8,7 +8,7 @@ import type Keybindings from '../../keyboard/shortcutHandler'
 
 export default function(keybindings: Keybindings): MenuItemConstructorOptions {
   return {
-    label: t('menu.marktext.title'),
+    label: 'MarkText AI',
     submenu: [
       {
         label: t('menu.marktext.about'),

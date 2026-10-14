@@ -1,199 +1,72 @@
-<p align="center"><img src="docs/assets/logo-small.png" alt="MarkText" width="100" height="100"></p>
+# MarkText AI
 
-<h1 align="center">MarkText</h1>
+Markdown 문서 옆의 작은 채팅창에서 수정을 요청하고, 결과를 문서에 바로 반영하는 macOS 편집기다.
 
-<div align="center">
-  <a href="https://twitter.com/intent/tweet?via=marktextme&url=https://github.com/marktext/marktext/&text=What%20do%20you%20want%20to%20say%20to%20app?&hashtags=happyMarkText">
-    <img src="https://img.shields.io/twitter/url/https/github.com/marktext/marktext.svg?style=for-the-badge" alt="twitter">
-  </a>
-</div>
-<div align="center">
-  <strong>:high_brightness: Next generation markdown editor :crescent_moon:</strong><br>
-  A simple and elegant open-source markdown editor that focused on speed and usability.<br>
-  <sub>Available for Linux, macOS and Windows.</sub>
-</div>
+**MarkText AI는 [MarkText](https://github.com/marktext/marktext)를 기반으로 독립적으로 개발·배포하는 커뮤니티 fork다.** 원본 [v0.21.2](https://github.com/marktext/marktext/tree/v0.21.2), 커밋 [`ae7a869c989950a3a56ce5c2f7fc0df12c652933`](https://github.com/marktext/marktext/commit/ae7a869c989950a3a56ce5c2f7fc0df12c652933)에 AI 편집과 문단 들여쓰기를 추가했다. 원본 개발자인 Luo Ran과 MarkText Contributors의 작업을 이어 사용한다.
 
-<br>
+## 설치
 
-<div align="center">
-  <!-- License -->
-  <a href="LICENSE">
-    <img src="https://img.shields.io/github/license/marktext/marktext.svg" alt="LICENSE">
-  </a>
-  <!-- Downloads total -->
-  <a href="https://github.com/marktext/marktext/releases">
-    <img src="https://img.shields.io/github/downloads/marktext/marktext/total.svg" alt="total download">
-  </a>
-  <!-- Downloads latest release -->
-  <a href="https://github.com/marktext/marktext/releases/latest">
-    <img src="https://img.shields.io/github/downloads/marktext/marktext/latest/total.svg" alt="latest download">
-  </a>
-  <!-- sponsors -->
-  <a href="https://opencollective.com/marktext">
-    <img src="https://opencollective.com/marktext/tiers/silver-sponsors/badge.svg?label=SilverSponsors&color=brightgreen" alt="sponsors">
-  </a>
-</div>
+첫 공개 미리보기 버전은 **`v0.21.2-ai.1`**이며, 설치판의 지원 범위는 **Apple Silicon Mac(M 시리즈), macOS 12 이상**이다.
 
-<div align="center">
-  <h3>
-    <a href="https://github.com/marktext/marktext">
-      Website
-    </a>
-    <span> | </span>
-    <a href="https://github.com/marktext/marktext#features">
-      Features
-    </a>
-    <span> | </span>
-    <a href="https://github.com/marktext/marktext#download-and-installation">
-      Downloads
-    </a>
-    <span> | </span>
-    <a href="https://github.com/marktext/marktext#development">
-      Development
-    </a>
-    <span> | </span>
-    <a href="https://github.com/marktext/marktext#contribution">
-      Contribution
-    </a>
-  </h3>
-</div>
+- **[DMG 설치판 다운로드](https://github.com/yunju-baek/marktext-ai/releases/download/v0.21.2-ai.1/MarkText-AI-0.21.2-ai.1-arm64.dmg)**
+- [ZIP 다운로드](https://github.com/yunju-baek/marktext-ai/releases/download/v0.21.2-ai.1/MarkText-AI-0.21.2-ai.1-arm64.zip)
+- [릴리스·체크섬·수정된 전체 소스](https://github.com/yunju-baek/marktext-ai/releases/tag/v0.21.2-ai.1)
 
-<div align="center">
-  <sub>Translations:</sub>
-  <a href="docs/i18n/README-zh_cn.md#readme">
-    <span>:cn:</span>
-  </a>
-  <a href="docs/i18n/README-zh_tw.md#readme">
-    <span>:taiwan:</span>
-  </a>
-  <a href="docs/i18n/README-jp.md#readme">
-    <span>:jp:</span>
-  </a>
-  <a href="docs/i18n/README-fr.md#readme">
-    <span>:fr:</span>
-  </a>
-  <a href="docs/i18n/README-tr.md#readme">
-    <span>:tr:</span>
-  </a>
-  <a href="docs/i18n/README-es.md#readme">
-    <span>:es:</span>
-  </a>
-  <a href="docs/i18n/README-pt.md#readme">
-    <span>:portugal:</span>
-  </a>
-  <a href="docs/i18n/README-kr.md#readme">
-    <span>:kr:</span>
-  </a>
-  <a href="docs/i18n/README-bn.md#readme">
-    <span>:bangladesh:</span>
-  </a>
-</div>
+DMG를 열고 **MarkText AI.app → Applications**로 드래그한다. 이 배포본은 로컬 ad-hoc 서명을 사용하며, Apple Developer ID 서명·공증은 미적용 상태다. 첫 실행에서 개발자 확인 안내가 나타나면 파일의 출처를 확인한 뒤 **시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기**를 선택한다. [Apple 실행 안내](https://support.apple.com/ko-kr/102445), [전체 설치 안내](docs/ai-preview/INSTALL.ko.txt).
 
-<div align="center">
-  <sub>This Markdown editor that could. Built with ❤︎ by
-    <a href="https://github.com/Jocs">Jocs</a> and
-    <a href="https://github.com/marktext/marktext/graphs/contributors">
-      contributors
-    </a>
-    .
-  </sub>
-</div>
+일반 Markdown 보기·편집은 앱 설치 후 바로 사용할 수 있다. 기본 `.md` 앱은 Finder에서 파일을 선택한 뒤 **⌘I → 다음으로 열기 → MarkText AI → 모두 변경**으로 설정한다.
 
-<br />
+## 추가한 기능
 
-<h2 align="center">Sponsors</h2>
+- **AI 채팅 편집:** 현재 문서와 최근 대화를 참고해 요청한 수정을 문서에 반영한다. 채팅에 변경 설명과 되돌리기를 표시한다.
+- **모델 선택:** 해당 Mac의 Codex 계정에서 사용할 수 있는 모델을 선택한다.
+- **작은 채팅창:** 왼쪽 경계를 드래그해 너비를 조절하고, 선택한 너비를 다음 실행에도 유지한다.
+- **일반 문단 들여쓰기:** Tab은 들여쓰기, Shift+Tab은 내어쓰기다. 줄 앞의 고정 공백(NBSP, U+00A0)으로 저장해 Markdown 문단 형식을 유지한다.
+- **목록 편집:** 목록 항목의 Tab은 기존처럼 하위 목록으로, Shift+Tab은 상위 목록으로 이동한다. 코드 블록·표·소스 모드는 각 편집 방식의 기존 동작을 따른다.
 
-MarkText is an open-source Markdown editor powered by the support of its community. If MarkText improves your workflow, please consider [sponsoring the project](https://github.com/sponsors/marktext). Thank you to all the sponsors ❤️
+## AI 연결
 
-**Special Sponsor**
+AI 기능은 각 Mac에 별도로 설치한 **Codex CLI**와 사용자가 로그인한 계정을 이용한다. 인터넷 연결과 Codex 이용 권한이 필요하며 계정의 사용 한도가 적용된다. CLI `0.159.2`에서 동작을 확인했다.
 
-<table>
-<tr>
-<td width="182"><a href="https://serpapi.com/?utm_source=marktext"><img src="docs/assets/sponsors/serpapi.png" width="150"></a></td>
-<td align="left"><a href="https://serpapi.com/?utm_source=marktext">Scrape Google and other search engines from our fast, easy, and complete API.</a></td>
-</tr>
-</table>
+Homebrew를 사용하는 Mac에서는 다음 명령으로 준비한다.
 
-## Screenshot
-
-![](docs/assets/marktext.png?raw=true)
-
-## Features
-
-- Realtime preview (WYSIWYG) and a clean and simple interface to get a distraction-free writing experience.
-- Support [CommonMark Spec](https://spec.commonmark.org), [GitHub Flavored Markdown Spec](https://github.github.com/gfm/) and selective support [Pandoc markdown](https://pandoc.org/MANUAL.html#pandocs-markdown).
-- Markdown extensions such as math expressions (KaTeX), front matter and emojis.
-- Support paragraphs and inline style shortcuts to improve your writing efficiency.
-- Output **HTML** and **PDF** files.
-- Various [themes](https://marktext.me/docs/themes): **Cadmium Light**, **Material Dark** etc.
-- Various editing modes: **Source Code mode**, **Typewriter mode**, **Focus mode**.
-- Paste images directly from clipboard.
-
-## Download and Installation
-
-![platform](https://img.shields.io/static/v1.svg?label=Platform&message=Linux%20x64%20|%20macOS%20x64%2Farm64%20|%20Windows%20x64%2Farm64&style=for-the-badge)
-
-|               ![](https://raw.githubusercontent.com/wiki/ryanoasis/nerd-fonts/screenshots/v1.0.x/mac-pass-sm.png)               |               ![](https://raw.githubusercontent.com/wiki/ryanoasis/nerd-fonts/screenshots/v1.0.x/windows-pass-sm.png)               |              ![](https://raw.githubusercontent.com/wiki/ryanoasis/nerd-fonts/screenshots/v1.0.x/linux-pass-sm.png)              |
-| :-----------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------: |
-| [![Download for macOS](https://img.shields.io/badge/macOS-Download-blue)](https://github.com/marktext/marktext/releases/latest) | [![Download for Windows](https://img.shields.io/badge/Windows-Download-blue)](https://github.com/marktext/marktext/releases/latest) | [![Download for Linux](https://img.shields.io/badge/Linux-Download-blue)](https://github.com/marktext/marktext/releases/latest) |
-
-Want to see new features of the latest version? Please refer to [CHANGELOG](https://marktext.me/docs/changelog).
-
-#### macOS
-
-Requires macOS 11 (Big Sur) or later. Universal builds aren't published — pick the matching `arm64` or `x64` installer.
-
-You can either download the latest `marktext-mac-(arm64|x64)-%version%.dmg` from the [release page](https://github.com/marktext/marktext/releases/latest) or install MarkText using [**homebrew cask**](https://github.com/caskroom/homebrew-cask). To use Homebrew-Cask you just need to have [Homebrew](https://brew.sh/) installed.
-
-```bash
-brew install --cask mark-text
+```sh
+brew install --cask codex
+codex login
+codex login status
 ```
 
-#### Windows
+[Codex CLI 설치 안내](https://developers.openai.com/codex/cli/)를 참고해 연결을 마친 뒤 앱을 다시 실행한다. 문서 오른쪽 위 **AI**를 누르고, 모델을 선택한 다음 채팅에 편집 요청을 입력한다. **Enter**는 요청, **Shift+Enter**는 줄바꿈이다.
 
-Requires Windows 10 or 11. Both x64 and arm64 installers are published — pick the architecture that matches your machine.
+요청 시 현재 문서와 최근 대화가 선택한 Codex 모델로 전달된다. 문서와 로그인 정보는 각 Mac에서 관리한다. 모델과 패널 너비는 로컬에 저장하며, 채팅은 실행 중인 앱 메모리에서 문서별로 유지한다. [사용법·데이터 처리 범위](docs/ai-preview/README.ko.md).
 
-Simply download and install MarkText via the setup wizard (`marktext-win-(x64|arm64)-%version%-setup.exe`) and choose whether to install per-user or machine wide. Alternatively, install MarkText using a package manager such as [Chocolatey](https://chocolatey.org/) or [Winget](https://docs.microsoft.com/en-us/windows/package-manager/winget/).
+## 소스에서 빌드
 
-To use Chocolatey, you need to have [Chocolatey](https://chocolatey.org/install) installed:
+macOS Apple Silicon 환경에서 Node.js 20.19 이상과 pnpm 10을 준비한다. 저장소에 지정된 pnpm 버전은 `10.33.4`다. 네이티브 모듈 빌드에는 Xcode Command Line Tools가 필요하다.
 
-```bash
-choco install marktext
+```sh
+git clone https://github.com/yunju-baek/marktext-ai.git
+cd marktext-ai
+pnpm install --frozen-lockfile
+pnpm run dev
 ```
 
-To use Winget, you need to have [Winget](https://docs.microsoft.com/en-us/windows/package-manager/winget/#install-winget) installed:
+검사와 설치판 빌드:
 
-```bash
-winget install marktext
+```sh
+pnpm run typecheck
+pnpm run lint
+./scripts/build-ai-mac.sh
 ```
 
-#### Linux
+결과는 `dist/MarkText-AI-0.21.2-ai.1-arm64.dmg`와 `dist/MarkText-AI-0.21.2-ai.1-arm64.zip`에 생성된다. [개발·검증 기록](docs/ai-preview/README.ko.md)과 [원본 개발 문서](https://github.com/marktext/marktext/tree/v0.21.2/packages/website/content/docs/dev)를 참고할 수 있다.
 
-Please follow the [Linux installation instructions](https://marktext.me/docs/installation).
+원본 GitHub Actions 워크플로 소스는 보존하며, 이 fork의 Actions 실행은 저장소 설정에서 비활성 상태로 관리한다. 공개 배포는 로컬 빌드·검증 후 GitHub Release에 설치판과 체크섬을 수동으로 게시하는 방식이다.
 
-#### Other
+## 원본 프로젝트와 라이선스
 
-All binaries for Linux, macOS and Windows can be downloaded from the [release page](https://github.com/marktext/marktext/releases/latest). If a version is unavailable for your system, then please open an [issue](https://github.com/marktext/marktext/issues).
-
-## Development
-
-If you wish to build MarkText yourself, please check out our [build instructions](https://marktext.me/docs/dev/build).
-
-- [User documentation](https://marktext.me/docs/introduction)
-- [Developer documentation](https://marktext.me/docs/dev/overview)
-
-If you have any questions regarding MarkText, you are welcome to write an issue. When doing so please use the default format found when opening an issue. Of course, if you submit a PR directly, it will be greatly appreciated.
-
-## Contribution
-
-MarkText is in development, please make sure to read the [Contributing Guide](.github/CONTRIBUTING.md) before making a pull request. Want to add some features to MarkText? Refer to our [roadmap](https://github.com/marktext/marktext/projects) and open issues.
-
-## Contributors
-
-Thank you to all the people who have already contributed to MarkText[[contributors](https://github.com/marktext/marktext/graphs/contributors)].
-
-<a href="https://github.com/marktext/marktext/graphs/contributors"><img src="https://opencollective.com/marktext/contributors.svg?width=890" /></a>
-
-## License
-
-[**MIT**](LICENSE).
+- 원본: [marktext/marktext](https://github.com/marktext/marktext), [사용자 문서](https://marktext.me/docs/markdown-syntax)
+- 원본 저작권: Copyright (c) 2017-present Luo Ran; Copyright (c) 2018-present MarkText Contributors
+- 라이선스: [MIT](LICENSE). 원본 저작권·허가 고지와 [제3자 라이선스 고지](packages/desktop/build/THIRD-PARTY-LICENSES.txt)를 보존한다.
+- 이 fork의 수정 소스와 배포: [yunju-baek/marktext-ai](https://github.com/yunju-baek/marktext-ai)
+- 이 fork의 기능 요청·문제 보고: [Issues](https://github.com/yunju-baek/marktext-ai/issues)

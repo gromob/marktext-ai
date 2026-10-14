@@ -3,6 +3,8 @@
 'use strict'
 
 const path = require('path')
+const fs = require('fs')
+const { builtinModules, createRequire } = require('module')
 const checker = require('license-checker')
 
 // license-checker keys packages as "<name>@<version>", and excludePackages
@@ -40,6 +42,54 @@ const getLicenses = (rootDir, callback) => {
   )
 }
 
+// read-installed misses pnpm's transitive symlinks; resolve each production
+// edge from its owning package before collecting that package's notice.
+const getInstalledLicenses = async(rootDir) => {
+  const visited = new Map()
+  const visit = (directory) => {
+    directory = fs.realpathSync(directory)
+    if (visited.has(directory)) return
+    const manifest = JSON.parse(fs.readFileSync(path.join(directory, 'package.json'), 'utf8'))
+    visited.set(directory, manifest)
+    const resolver = createRequire(path.join(directory, 'package.json'))
+    const peers = Object.fromEntries(Object.entries(manifest.peerDependencies || {})
+      .filter(([name]) => !manifest.peerDependenciesMeta?.[name]?.optional))
+    for (const name of Object.keys({ ...manifest.dependencies, ...manifest.optionalDependencies, ...peers })) {
+      const filename = resolver.resolve.paths(name)
+        ?.map(base => path.join(base, name, 'package.json'))
+        .find(candidate => fs.existsSync(candidate))
+      if (filename) visit(path.dirname(filename))
+      else if (!manifest.optionalDependencies?.[name] && !builtinModules.includes(name)) {
+        throw new Error(`Missing installed dependency: ${manifest.name} -> ${name}`)
+      }
+    }
+  }
+  visit(rootDir)
+  const packages = {}
+  for (const [directory, manifest] of visited) {
+    if (directory === fs.realpathSync(rootDir) || manifest.name === '@muyajs/core') continue
+    const key = `${manifest.name}@${manifest.version}`
+    const metadata = await new Promise((resolve, reject) => {
+      checker.init({
+        start: directory, production: true, development: false, direct: true,
+        customFormat: { licenseText: '' }, json: true
+      }, (error, result) => {
+        if (error) reject(error)
+        else resolve(result[key] || result[`${manifest.name}@${manifest.version.replace(/^v/, '')}`] || {})
+      })
+    })
+    const noticeFiles = fs.readdirSync(directory).filter(name =>
+      /^(licen[cs]e|copying|copyright|notice)(?:[._-]|$)/i.test(name)
+      && fs.statSync(path.join(directory, name)).isFile()).sort()
+    packages[key] = {
+      ...metadata,
+      manifest,
+      noticeFiles: noticeFiles.map(name => ({ name, text: fs.readFileSync(path.join(directory, name), 'utf8').trim() }))
+    }
+  }
+  return packages
+}
+
 // Check that all production dependencies are allowed.
 const validateLicenses = (rootDir) => {
   getLicenses(rootDir, (err, packages, checker) => {
@@ -57,5 +107,6 @@ const validateLicenses = (rootDir) => {
 
 module.exports = {
   getLicenses,
+  getInstalledLicenses,
   validateLicenses
 }

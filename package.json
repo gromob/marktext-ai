@@ -1,9 +1,9 @@
 {
   "name": "marktext-monorepo",
-  "version": "0.21.2",
-  "description": "MarkText monorepo root",
+  "version": "0.21.2-ai.1",
+  "description": "MarkText AI — an independent AI editing fork of MarkText",
   "private": true,
-  "homepage": "https://github.com/marktext/marktext",
+  "homepage": "https://github.com/yunju-baek/marktext-ai",
   "packageManager": "pnpm@10.33.4",
   "engines": {
     "node": ">=20.19.0",

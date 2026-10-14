@@ -16,6 +16,12 @@ export interface IMuyaOptions {
     bulletListMarker: string;
     orderListDelimiter: string;
     tabSize: number;
+    /**
+     * Indent plain paragraph lines with non-breaking spaces that survive a
+     * Markdown round trip without becoming indented code. Excludes list
+     * descendants; disabled by default for ordinary Markdown Tab behavior.
+     */
+    indentParagraphsWithTab: boolean;
     codeBlockLineNumbers: boolean;
     listIndentation: number;
     frontMatter: boolean;

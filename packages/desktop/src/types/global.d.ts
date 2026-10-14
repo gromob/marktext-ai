@@ -14,6 +14,7 @@ import type {
 } from '@shared/types/ipc'
 import type { MenuTemplate, MenuPopupPosition } from '@shared/types/menu'
 import type { SerializedStat } from '@shared/types/files'
+import type { AiAPI } from '@shared/types/ai'
 
 declare global {
   // ---- Build-time defines (electron-vite `define`) ----
@@ -85,6 +86,7 @@ declare global {
   }
 
   interface ElectronAPI {
+    ai: AiAPI
     ipcRenderer: ElectronIpcRenderer
     shell: ElectronShellAPI
     clipboard: ElectronClipboardAPI

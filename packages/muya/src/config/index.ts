@@ -325,6 +325,7 @@ export const MUYA_DEFAULT_OPTIONS = {
     bulletListMarker: '-',
     orderListDelimiter: '.',
     tabSize: 4,
+    indentParagraphsWithTab: false,
     codeBlockLineNumbers: false,
     wrapCodeBlocks: false,
     // bullet/list marker width + listIndentation, tab or Daring Fireball Markdown (4 spaces) --> list indentation

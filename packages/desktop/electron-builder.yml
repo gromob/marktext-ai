@@ -1,5 +1,6 @@
-appId: com.github.marktext.marktext
-productName: MarkText
+appId: local.marktext.ai
+productName: MarkText AI
+publish: null
 directories:
   buildResources: build
   output: ../../dist
@@ -37,7 +38,18 @@ files:
   - '!eslint.config.js'
   - '!jsconfig.json'
   - '!docs/*'
+  - '!test/**'
+  - '!test-results/**'
+  - '!playwright-report/**'
+  - '!patches/**'
+  - '!{playwright.config.ts,vitest.config.ts,tsconfig*.json}'
 extraResources:
+  - from: ../../LICENSE
+    to: LICENSE.txt
+  - from: ../../NOTICE
+    to: NOTICE.txt
+  - from: build/THIRD-PARTY-LICENSES.txt
+    to: THIRD-PARTY-LICENSES.txt
   - from: build/icons
     to: icons # ends up at resources/icons/
     filter:

@@ -1,8 +1,8 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
-  - name: Ask a Question
-    url: https://github.com/marktext/marktext/discussions
-    about: Use GitHub Discussions for questions, help, and general conversation about MarkText.
+  - name: MarkText AI Questions
+    url: https://github.com/yunju-baek/marktext-ai/issues
+    about: Ask about this fork and its AI editing features.
   - name: Documentation
-    url: https://github.com/marktext/marktext/tree/develop/docs
-    about: Check the docs before asking — your answer may already be there.
+    url: https://github.com/yunju-baek/marktext-ai/blob/main/docs/ai-preview/README.ko.md
+    about: Installation, AI connection, editing, and build instructions.

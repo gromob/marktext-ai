@@ -438,7 +438,7 @@ export class Editor {
         const end = Math.max(anchor.offset, focus.offset);
 
         if (isSelectionInSameBlock && cursorBlock && cursorBlock.isContent()) {
-            cursorBlock.setCursor(begin, end, true);
+            cursorBlock.setCursor(anchor.offset, focus.offset, true);
             return;
         }
 

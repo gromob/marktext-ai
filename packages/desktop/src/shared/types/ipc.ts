@@ -34,6 +34,7 @@ import type {
 import type { BufferedState as BufferedStateType } from './bufferedState'
 import type { MenuTemplate, MenuPopupPosition } from './menu'
 import type { PandocCommandInfo } from './pandoc'
+import type { AiModel, AiRewriteRequest, AiRewriteResult, AiStatus } from './ai'
 
 export interface SaveDialogRequest {
   title?: string
@@ -50,6 +51,10 @@ export type PlantumlFetchResult =
 // =================================================================
 
 export interface IpcInvokeChannels {
+  'mt::ai::status': { args: []; ret: AiStatus }
+  'mt::ai::models': { args: []; ret: AiModel[] }
+  'mt::ai::rewrite': { args: [request: AiRewriteRequest]; ret: AiRewriteResult }
+  'mt::ai::cancel': { args: [requestId: string]; ret: void }
   'mt::ask-for-image-path': { args: []; ret: string[] }
   'mt::boot-info-async': { args: []; ret: BootInfo }
   'mt::clipboard::guess-file-path': { args: []; ret: string | null }

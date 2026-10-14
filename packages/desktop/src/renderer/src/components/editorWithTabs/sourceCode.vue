@@ -8,6 +8,8 @@
 <script setup lang="ts">
 import { ref, shallowRef, markRaw, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useEditorStore } from '@/store/editor'
+import { useAiEditorStore } from '@/store/aiEditor'
+import { rangeFromPositions } from '@/util/aiSelection'
 import { usePreferencesStore } from '@/store/preferences'
 import { findMarkdownHeadingLine, scrollSourceEditorToLine } from '@/util/sourceModeToc'
 import { storeToRefs } from 'pinia'
@@ -30,6 +32,7 @@ const props = defineProps<{
 }>()
 
 const editorStore = useEditorStore()
+const aiEditorStore = useAiEditorStore()
 const preferencesStore = usePreferencesStore()
 
 const sourceCodeContainer = ref<HTMLDivElement | null>(null)
@@ -38,6 +41,8 @@ const editor = shallowRef<CodeMirror.Editor | null>(null)
 const commitTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const viewDestroyed = ref(false)
 const tabId = ref<string | null>(null)
+let aiRevision = 0
+let unregisterAiEditor: (() => void) | undefined
 
 const {
   theme,
@@ -140,6 +145,7 @@ interface FileChangePayloadLike {
 }
 
 const handleFileChange = (payload: unknown) => {
+  aiRevision++
   const { id, markdown: newMarkdown, muyaIndexCursor } = payload as FileChangePayloadLike
   if (!editor.value) return
 
@@ -343,6 +349,9 @@ const saveContent = (cm: CodeMirror.Editor) => {
 }
 
 const listenChange = (cm: CodeMirror.Editor) => {
+  cm.on('change', () => {
+    aiRevision++
+  })
   cm.on('cursorActivity', (instance: CodeMirror.Editor) => {
     saveContent(instance)
     updateSelectionWordCount(instance)
@@ -419,12 +428,50 @@ onMounted(() => {
 
   editor.value = codeMirrorInstance
   tabId.value = id
+  unregisterAiEditor = aiEditorStore.registerAdapter('source', {
+    isActive: () => sourceCode.value && !!editor.value && tabId.value === currentTab.value?.id,
+    readDocument: () => ({
+      documentId: tabId.value!,
+      markdown: codeMirrorInstance.getValue(),
+      revision: aiRevision
+    }),
+    readSelection: () => {
+      if (codeMirrorInstance.listSelections().length !== 1) {
+        throw new Error('연속된 범위 한 곳을 선택해 주세요.')
+      }
+      return {
+        range: rangeFromPositions(
+          codeMirrorInstance.getValue(),
+          codeMirrorInstance.getCursor('anchor'),
+          codeMirrorInstance.getCursor('head')
+        )
+      }
+    },
+    replace: (_snapshot, markdown) => {
+      codeMirrorInstance.operation(() => {
+        codeMirrorInstance.replaceRange(
+          markdown,
+          codeMirrorInstance.posFromIndex(0),
+          codeMirrorInstance.posFromIndex(codeMirrorInstance.getValue().length),
+          'ai-edit'
+        )
+      })
+      saveContent(codeMirrorInstance)
+      codeMirrorInstance.focus()
+    },
+    undo: () => {
+      codeMirrorInstance.undo()
+      saveContent(codeMirrorInstance)
+      codeMirrorInstance.focus()
+    }
+  })
   updateSelectionWordCount(codeMirrorInstance)
 
   listenChange(codeMirrorInstance)
 })
 
 onBeforeUnmount(() => {
+  unregisterAiEditor?.()
   viewDestroyed.value = true
   if (commitTimer.value) clearTimeout(commitTimer.value)
 

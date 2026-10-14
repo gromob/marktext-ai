@@ -22,3 +22,5 @@ playwright-report/
 .codex/
 .agents/
 .agent/
+
+output/playwright/

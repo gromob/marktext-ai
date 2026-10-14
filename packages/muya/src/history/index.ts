@@ -272,8 +272,12 @@ class History {
         };
     }
 
-    cutoff() {
+    // A command may supply its current selection when it differs from the
+    // cursor recorded by the preceding text edit.
+    cutoff(selection?: IHistorySelection) {
         this._lastRecorded = 0;
+        if (selection)
+            this._selectionStack = [selection];
     }
 
     markInputBoundary(inputType: string, data: Nullable<string>): void {
