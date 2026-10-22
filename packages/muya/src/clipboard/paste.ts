@@ -601,11 +601,17 @@ interface IPasteData {
 async function applyPaste(clipboard: Clipboard, data: IPasteData): Promise<void> {
     const { muya } = clipboard;
     const { bulletListMarker } = muya.options;
+    const { imageFile, pasteType } = data;
+    const plainTextOnly = pasteType === PasteType.PASTE_AS_PLAIN_TEXT;
+
+    // Image-only clipboards must leave an existing text selection intact.
+    if (plainTextOnly && data.text === '')
+        return;
 
     // A selected inline image collapses the text selection, so handle the
     // "paste an image over a selected image" replace before reading the
     // (now absent) text selection.
-    if (clipboard.selection.image && await tryReplaceSelectedImage(clipboard, data.imageFile))
+    if (!plainTextOnly && clipboard.selection.image && await tryReplaceSelectedImage(clipboard, imageFile))
         return;
 
     const selection = clipboard.selection.getSelection();
@@ -618,7 +624,6 @@ async function applyPaste(clipboard: Clipboard, data: IPasteData): Promise<void>
     if (!anchorBlock)
         return;
 
-    const { imageFile, pasteType } = data;
     let { html } = data;
     // Preserve source provenance before synthetic URL/table HTML promotion.
     const hasClipboardHtml = html !== '';
@@ -635,7 +640,7 @@ async function applyPaste(clipboard: Clipboard, data: IPasteData): Promise<void>
     // When the clipboard holds an image — either a file resolved to a path
     // or an in-memory bitmap — insert it as an inline image
     // routed through `imageAction`, short-circuiting the text/HTML paste.
-    if (await tryPasteImage(clipboard, anchorBlock, imageFile))
+    if (!plainTextOnly && await tryPasteImage(clipboard, anchorBlock, imageFile))
         return;
 
     // Support pasted URLs from Firefox.
@@ -727,6 +732,9 @@ export function pasteSelection(
         return Promise.resolve();
 
     const text = rawText ?? event.clipboardData.getData('text/plain');
+    if (clipboard.muya.options.pasteAsPlainText || clipboard.pasteType === PasteType.PASTE_AS_PLAIN_TEXT)
+        return pastePlainText(clipboard, text);
+
     const html = rawHtml ?? event.clipboardData.getData('text/html');
     // Snapshot any in-memory image File (the bitmap / "Copy Image" /
     // screenshot case) synchronously too — `clipboardData.files` is also

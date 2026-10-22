@@ -74,9 +74,18 @@
       <p
         v-if="activeRequest?.documentId === currentDocumentId"
         class="thinking"
+        data-testid="ai-request-status"
         role="status"
       >
         {{ cancelling ? '요청을 취소하고 있어요…' : '문서를 편집하고 있어요…' }}
+        <span v-if="!cancelling">({{ elapsedTime }})</span>
+        <span
+          v-if="!cancelling && elapsedSeconds >= 180"
+          class="waiting-hint"
+        >
+          문서 전체를 정리할 때는 시간이 더 걸릴 수 있어요.
+          최대 {{ AI_REWRITE_TIMEOUT_MS / 60_000 }}분 동안 기다리며, 중지 버튼으로 취소할 수 있어요.
+        </span>
       </p>
     </div>
     <form
@@ -163,6 +172,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { storeToRefs } from 'pinia'
 import { useEditorStore } from '@/store/editor'
 import { useAiEditorStore } from '@/store/aiEditor'
+import { AI_REWRITE_TIMEOUT_MS } from '@shared/types/ai'
 
 type ChatMessage = {
   id: string
@@ -205,10 +215,29 @@ watch(selectedModel, model => {
     // A storage policy may prevent saving preferences while editing remains available.
   }
 })
-const activeRequest = ref<{ id: string; documentId: string } | null>(null)
+const activeRequest = ref<{ id: string; documentId: string; startedAt: number } | null>(null)
 const cancelling = ref(false)
 const busy = computed(() => activeRequest.value !== null)
-const errorText = (cause: unknown) => cause instanceof Error ? cause.message : String(cause)
+const elapsedSeconds = ref(0)
+const elapsedTime = computed(() => `${Math.floor(elapsedSeconds.value / 60)}:${String(elapsedSeconds.value % 60).padStart(2, '0')}`)
+let elapsedTimer: ReturnType<typeof setInterval> | undefined
+const stopElapsedTimer = () => {
+  if (elapsedTimer) clearInterval(elapsedTimer)
+  elapsedTimer = undefined
+}
+watch(activeRequest, request => {
+  stopElapsedTimer()
+  elapsedSeconds.value = 0
+  if (request) {
+    elapsedTimer = setInterval(() => {
+      elapsedSeconds.value = Math.max(0, Math.floor((Date.now() - request.startedAt) / 1000))
+    }, 1000)
+  }
+})
+const errorText = (cause: unknown) => {
+  const message = cause instanceof Error ? cause.message : String(cause)
+  return message.replace(/^Error invoking remote method '[^']+':\s*(?:Error:\s*)?/, '')
+}
 
 const addMessage = (documentId: string, message: Omit<ChatMessage, 'id'>) => {
   const messages = conversations.get(documentId) || []
@@ -274,7 +303,7 @@ const send = async () => {
   const userMessageId = addMessage(documentId, { role: 'user', content: instruction, history: false })
   drafts.set(documentId, '')
   const requestId = crypto.randomUUID()
-  activeRequest.value = { id: requestId, documentId }
+  activeRequest.value = { id: requestId, documentId, startedAt: Date.now() }
   try {
     const result = await window.electron.ai.rewrite({ requestId, instruction, markdown: snapshot.markdown, model: selectedModel.value || undefined, history })
     if (activeRequest.value?.id !== requestId || cancelling.value) return
@@ -292,10 +321,16 @@ const send = async () => {
     const userMessage = conversations.get(documentId)?.find(message => message.id === userMessageId)
     if (userMessage) userMessage.history = true
   } catch (cause) {
-    if (activeRequest.value?.id === requestId && !cancelling.value) addReply(documentId, errorText(cause), true)
+    if (activeRequest.value?.id === requestId && !cancelling.value) {
+      addReply(documentId, errorText(cause), true)
+      if (!drafts.get(documentId)) drafts.set(documentId, instruction)
+    }
   } finally {
     if (activeRequest.value?.id === requestId) {
-      if (cancelling.value) addMessage(documentId, { role: 'assistant', content: '요청을 취소했습니다.', history: false })
+      if (cancelling.value) {
+        addMessage(documentId, { role: 'assistant', content: '요청을 취소했습니다.', history: false })
+        if (!drafts.get(documentId)) drafts.set(documentId, instruction)
+      }
       activeRequest.value = null
       cancelling.value = false
     }
@@ -345,6 +380,7 @@ onMounted(() => {
   window.addEventListener('beforeunload', releaseRequest)
 })
 onBeforeUnmount(() => {
+  stopElapsedTimer()
   releaseRequest()
   window.removeEventListener('beforeunload', releaseRequest)
 })
@@ -379,6 +415,7 @@ onBeforeUnmount(() => {
 .chat-error { color: var(--deleteColor); }
 .undo-button { margin-top: 7px; }
 .thinking { margin-top: 20px !important; color: var(--editorColor50); font-size: 12px; }
+.waiting-hint { display: block; margin-top: 5px; }
 .chat-composer { flex-shrink: 0; margin: 0 14px 14px; border: 1px solid var(--editorColor10); border-radius: 12px; background: var(--editorColor04); overflow: hidden; }
 .chat-composer:focus-within { border-color: var(--themeColor40); }
 .chat-composer textarea { display: block; width: 100%; min-height: 84px; max-height: 200px; padding: 12px 13px 4px; resize: vertical; border: 0; background: transparent; color: var(--editorColor80); font-size: 12px; line-height: 1.7; }

@@ -5,12 +5,13 @@ import { join } from 'node:path'
 import { resolveCommand } from '../utils/resolveCommand'
 import { isModelId, readCodexModels } from './codexModels'
 import { terminateCodexProcess } from './codexProcess'
+import { AI_REWRITE_TIMEOUT_MS } from '@shared/types/ai'
 import type { AiModel, AiRewriteRequest, AiRewriteResult, AiStatus } from '@shared/types/ai'
 
 const MAX_MARKDOWN_LENGTH = 300_000
 const MAX_OUTPUT_BYTES = 2_000_000
 const CANCELLED = 'AI 요청을 취소했습니다.'
-const TIMED_OUT = 'AI 응답 대기 시간이 지났습니다. 범위를 줄여 다시 요청하세요.'
+const TIMED_OUT = 'AI 응답 대기 시간이 지났습니다. 현재 문서는 그대로 유지됩니다. 잠시 후 다시 요청해 주세요.'
 const CONNECTION_ERROR = 'Codex 연결을 확인하세요. 터미널에서 codex login과 네트워크 상태를 확인할 수 있습니다.'
 
 const outputSchema = {
@@ -129,7 +130,9 @@ export class CodexRewriter {
   private modelRequest: Promise<AiModel[]> | null = null
   private modelController: AbortController | null = null
 
-  constructor(private readonly timeoutMs = 180_000) {}
+  // Whole-document rewrites include generating the complete replacement, which
+  // can exceed three minutes even while the model is responding normally.
+  constructor(private readonly timeoutMs = AI_REWRITE_TIMEOUT_MS) {}
 
   models(): Promise<AiModel[]> {
     if (this.modelRequest) return this.modelRequest

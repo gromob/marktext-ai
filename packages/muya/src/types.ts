@@ -55,6 +55,8 @@ export interface IMuyaOptions {
     };
     json?: TState[];
     markdown?: string;
+    /** Use only clipboard text as Markdown source for native paste events. */
+    pasteAsPlainText?: boolean;
     /**
      * Resolve the OS clipboard to a local file path on paste.
      *

@@ -60,7 +60,10 @@ beforeEach(() => {
   })
 })
 
-afterEach(() => vi.clearAllMocks())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.clearAllMocks()
+})
 
 describe('Codex Markdown rewriting', () => {
   it('uses stdin, constrained execution, and removes its temporary result', async() => {
@@ -199,6 +202,42 @@ describe('Codex Markdown rewriting', () => {
     await expect(new CodexRewriter(25).rewrite(1, request)).rejects.toThrow('대기 시간')
     expect(calls[0].child.kill).toHaveBeenCalledWith('SIGTERM')
     await expect(access(calls[0].cwd)).rejects.toThrow()
+  })
+
+  it('accepts a complete document response after the former three-minute cutoff', async() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    handleInvocation = () => {}
+    const service = new CodexRewriter()
+    const running = service.rewrite(1, request)
+    await vi.waitFor(() => expect(calls).toHaveLength(1))
+
+    await vi.advanceTimersByTimeAsync(180_001)
+    expect(calls[0].child.kill).not.toHaveBeenCalled()
+    const { child, args } = calls[0]
+    await writeFile(args[args.indexOf('--output-last-message') + 1], JSON.stringify({ markdown: '# 완성된 문서' }))
+    child.emit('close', 0)
+
+    await expect(running).resolves.toEqual({ markdown: '# 완성된 문서' })
+    await expect(access(calls[0].cwd)).rejects.toThrow()
+  })
+
+  it('still bounds full-document requests to fifteen minutes and releases the window', async() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    handleInvocation = () => {}
+    const service = new CodexRewriter()
+    const timedOut = expect(service.rewrite(1, request)).rejects.toThrow('대기 시간')
+    await vi.waitFor(() => expect(calls).toHaveLength(1))
+
+    await vi.advanceTimersByTimeAsync(15 * 60_000)
+    await timedOut
+    expect(calls[0].child.kill).toHaveBeenCalledWith('SIGTERM')
+    await expect(access(calls[0].cwd)).rejects.toThrow()
+
+    handleInvocation = async({ child, args }) => {
+      await writeFile(args[args.indexOf('--output-last-message') + 1], JSON.stringify({ markdown: 'Retry result' }))
+      child.emit('close', 0)
+    }
+    await expect(service.rewrite(1, request)).resolves.toEqual({ markdown: 'Retry result' })
   })
 
   it('caps subprocess output and hides raw diagnostics', async() => {

@@ -104,3 +104,65 @@ describe('paste as plain text — block-level HTML is literal (A8, muyajs parity
         expect(muya.editor.scrollPage!.length()).toBe(2);
     });
 });
+
+describe('plain-text paste policy', () => {
+    it.each(['native', 'explicit'])('uses text even when the OS clipboard resolves an image (%s)', async (entry) => {
+        const clipboardFilePath = vi.fn().mockResolvedValue('/tmp/copied-image.png');
+        const imageAction = vi.fn().mockResolvedValue('assets/copied-image.png');
+        const muya = bootMuya('start ', {
+            pasteAsPlainText: true,
+            clipboardText: async () => '복사한 텍스트',
+            clipboardFilePath,
+            imageAction,
+        });
+        const block = firstContent(muya);
+        const path = block.path;
+        muya.editor.selection.getSelection = () => ({
+            anchor: { offset: 6, block, path },
+            focus: { offset: 6, block, path },
+            isCollapsed: true,
+            isSelectionInSameBlock: true,
+            direction: SelectionDirection.FORWARD,
+            type: SelectionCaretType.RANGE,
+        });
+
+        if (entry === 'explicit') {
+            await muya.editor.clipboard.pasteAsPlainText();
+        }
+        else {
+            const data = new DataTransfer();
+            data.setData('text/plain', '복사한 텍스트');
+            data.setData('text/html', '<p><strong>복사한 텍스트</strong><img src="photo.png"></p>');
+            data.items.add(new File(['image'], 'photo.png', { type: 'image/png' }));
+            await muya.editor.clipboard.pasteHandler(new ClipboardEvent('paste', { clipboardData: data }));
+        }
+
+        await expect.poll(() => muya.getMarkdown()).toBe('start 복사한 텍스트\n');
+        expect(clipboardFilePath).not.toHaveBeenCalled();
+        expect(imageAction).not.toHaveBeenCalled();
+    });
+
+    it('preserves a cross-block selection when the clipboard contains only an image', async () => {
+        const muya = bootMuya('first\n\nsecond\n', { pasteAsPlainText: true });
+        const anchor = firstContent(muya);
+        const focus = muya.editor.scrollPage!.lastContentInDescendant()!;
+        muya.editor.selection.getSelection = () => ({
+            anchor: { offset: 0, block: anchor, path: anchor.path },
+            focus: { offset: 6, block: focus, path: focus.path },
+            isCollapsed: false,
+            isSelectionInSameBlock: false,
+            direction: SelectionDirection.FORWARD,
+            type: SelectionCaretType.RANGE,
+        });
+        const cut = vi.spyOn(muya.editor.clipboard, 'cutHandler');
+        const data = new DataTransfer();
+        data.items.add(new File(['image'], 'photo.png', { type: 'image/png' }));
+        const event = new ClipboardEvent('paste', { clipboardData: data, cancelable: true });
+
+        await muya.editor.clipboard.pasteHandler(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(muya.getMarkdown()).toBe('first\n\nsecond\n');
+        expect(cut).not.toHaveBeenCalled();
+    });
+});

@@ -111,7 +111,6 @@ import { SpellcheckerLanguageCommand } from '@/commands'
 import { SpellChecker } from '@/spellchecker'
 import { isMac, animatedScrollTo } from '@/util'
 import { moveImageToFolder, uploadImage } from '@/util/fileSystem'
-import { guessClipboardFilePath } from '@/util/clipboard'
 import { dataURLToFile } from '@/util/dataURLToFile'
 import { getCssForOptions, getHtmlToc, type PdfCssOptions, type HtmlTocOptions } from '@/util/pdf'
 import {
@@ -1839,14 +1838,10 @@ onMounted(() => {
     plantumlServer: preferencesStore.plantumlServer,
     spellcheckEnabled: spellcheckerEnabled.value,
     spellcheckHideMarks: spellcheckerNoUnderline.value,
-    // Resolve the OS clipboard to a local file path on paste (image-from-file).
-    clipboardFilePath: guessClipboardFilePath,
+    pasteAsPlainText: true,
     // Read the OS clipboard's plain text for "Paste as Plain Text" (execCommand('paste') no longer fires).
     clipboardText: () => window.electron.clipboard.readText(),
-    // Image-persist callbacks read by the engine's clipboard + drag-drop handlers
-    // from `muya.options.*` (distinct from the ImageEditTool plugin option above).
-    // Without these, local-file drag-drop, screenshot/binary clipboard paste, and
-    // copy-to-assets on a pasted image file silently no-op or insert raw paths.
+    // Explicit image insertion and drag-drop share the configured asset storage.
     imageAction: muyaImageAction,
     getPathForFile: (file: File) => window.electron.webUtils.getPathForFile(file)
   }

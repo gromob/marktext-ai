@@ -1,3 +1,5 @@
+export const AI_REWRITE_TIMEOUT_MS = 15 * 60_000
+
 export interface AiStatus {
   available: boolean
   loggedIn: boolean

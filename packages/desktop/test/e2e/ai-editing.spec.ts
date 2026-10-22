@@ -212,3 +212,52 @@ test('switching tabs during a request protects both documents from the late resp
     await app.close()
   }
 })
+
+test('long requests show elapsed time and apply the completed response', async() => {
+  const { app, page } = await launchWithMarkdown('Original.\n', { suppressErrorDialog: true })
+  try {
+    await mockCodex(app, [{ markdown: '| 항목 | 내용 |\n| --- | --- |\n| 문장 | Original. |\n' }], true)
+    await page.getByTestId('ai-toggle').click()
+    await page.clock.install()
+    await send(page, '보기 좋게 편집해 줘. 표도 적극 이용해 줘.')
+    await expect.poll(async() => (await requests(app)).length).toBe(1)
+    await page.clock.fastForward(181_000)
+
+    await expect(page.getByTestId('ai-request-status')).toContainText('3:01')
+    await expect(page.getByTestId('ai-request-status')).toContainText('최대 15분')
+    await expect(page.getByTestId('ai-cancel')).toBeEnabled()
+    await expect(page.locator('.editor-component')).toContainText('Original.')
+    await finishRequest(app)
+    await expect(page.locator('.editor-component table')).toContainText('Original.')
+    await expect(page.getByTestId('ai-request-status')).toHaveCount(0)
+    await expectNoRendererErrors(app)
+  } finally {
+    await app.close()
+  }
+})
+
+test('a failed request keeps the document and restores the instruction for retry', async() => {
+  const { app, page } = await launchWithMarkdown('Original.\n', { suppressErrorDialog: true })
+  try {
+    await mockCodex(app, [{ markdown: 'Revised.\n' }])
+    await app.evaluate(({ ipcMain }) => {
+      ipcMain.removeHandler('mt::ai::rewrite')
+      ipcMain.handle('mt::ai::rewrite', () => { throw new Error('AI 응답 대기 시간이 지났습니다.') })
+    })
+    await page.getByTestId('ai-toggle').click()
+    const instruction = '보기 좋게 편집해 줘. 표도 적극 이용해 줘.'
+    await send(page, instruction)
+
+    await expect(page.getByTestId('ai-error')).toHaveText('AI 응답 대기 시간이 지났습니다.')
+    await expect(page.getByTestId('ai-instruction')).toHaveValue(instruction)
+    await expect(page.getByTestId('ai-generate')).toBeEnabled()
+    await expect(page.locator('.editor-component')).toContainText('Original.')
+    await mockCodex(app, [{ markdown: 'Revised.\n' }])
+    await page.getByTestId('ai-generate').click()
+    await expect(page.locator('.editor-component')).toContainText('Revised.')
+    expect((await requests(app))[0].history).toEqual([])
+    await expectNoRendererErrors(app)
+  } finally {
+    await app.close()
+  }
+})
