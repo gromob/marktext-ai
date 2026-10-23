@@ -4,6 +4,7 @@ import { useEditorStore } from './editor'
 import { useLayoutStore } from './layout'
 
 export const useListenForMainStore = defineStore('listenForMain', () => {
+  let editActionsListening = false
   function EDITOR_EDIT_ACTION(type: string): void {
     const layoutStore = useLayoutStore()
     if (type === 'findInFolder') {
@@ -16,6 +17,10 @@ export const useListenForMainStore = defineStore('listenForMain', () => {
   }
 
   function LISTEN_FOR_EDIT(): void {
+    // App remounts during HMR keep this store and its IPC subscriptions alive.
+    if (editActionsListening) return
+    editActionsListening = true
+
     // Pass `type` through as-is (no String() coercion) — matches develop's JS
     // behavior, including when callers send unexpected non-string values.
     window.electron.ipcRenderer.on('mt::editor-edit-action', (_e, type) => {

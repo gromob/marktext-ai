@@ -239,11 +239,31 @@ export class Muya {
     }
 
     undo() {
-        this.editor.history.undo();
+        this._changeHistory('undo');
     }
 
     redo() {
-        this.editor.history.redo();
+        this._changeHistory('redo');
+    }
+
+    private _changeHistory(action: 'undo' | 'redo') {
+        const block = this.editor.activeContentBlock;
+        const composing = block?.isComposing;
+        if (composing && document.activeElement instanceof HTMLElement) {
+            // Native blur commits the IME and emits compositionend before its
+            // DOM is replaced by history. Resetting the flag alone loses text.
+            document.activeElement.blur();
+        }
+        try {
+            if (!block?.isComposing) {
+                this.editor.jsonState.flush();
+                this.editor.history[action]();
+            }
+        }
+        finally {
+            if (composing)
+                this.editor.focus();
+        }
     }
 
     getHistory() {

@@ -13,6 +13,7 @@ vi.hoisted(() => {
 
 import { useListenForMainStore } from '@/store/listenForMain'
 import { useLayoutStore } from '@/store/layout'
+import bus from '@/bus'
 
 // `EDITOR_EDIT_ACTION('findInFolder')` routes through `layoutStore.SET_LAYOUT`,
 // which (because `showSideBar` is defined) reads `window.marktext.env`,
@@ -41,6 +42,7 @@ describe('listenForMain store EDITOR_EDIT_ACTION', () => {
   afterEach(() => {
     delete win.electron
     delete win.marktext
+    bus.all.clear()
     vi.clearAllMocks()
   })
 
@@ -63,5 +65,30 @@ describe('listenForMain store EDITOR_EDIT_ACTION', () => {
 
     expect(layoutStore.rightColumn).toBe('files')
     expect(layoutStore.showSideBar).toBe(false)
+  })
+
+  it('registers edit actions once when the app mounts again during development', () => {
+    const store = useListenForMainStore()
+    for (let mount = 0; mount < 6; mount++) store.LISTEN_FOR_EDIT()
+
+    const ipc = win.electron?.ipcRenderer
+    if (!ipc) throw new Error('IPC mock is missing')
+    const subscriptions = ipc.on.mock.calls.filter(
+      ([channel]) => channel === 'mt::editor-edit-action'
+    )
+    for (const action of ['undo', 'redo']) {
+      const handler = vi.fn()
+      bus.on(action, handler)
+      try {
+        for (const [, callback] of subscriptions) callback({}, action)
+        expect(handler).toHaveBeenCalledTimes(1)
+        handler.mockClear()
+        bus.emit('mt::editor-edit-action', action)
+        expect(handler).toHaveBeenCalledTimes(1)
+      } finally {
+        bus.off(action, handler)
+      }
+    }
+    expect(subscriptions).toHaveLength(1)
   })
 })

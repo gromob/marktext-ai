@@ -1,13 +1,13 @@
 import type { IHighlight } from '../../inlineRenderer/types';
 import type { Muya } from '../../muya';
-import type { IContentCursor, INodeOffset, IRenderCursor } from '../../selection/types';
+import type { IContentCursor, IHistorySelection, INodeOffset, IRenderCursor } from '../../selection/types';
 import type { Nullable } from '../../types';
 import type { TBlockPath } from '../types';
 import type Parent from './parent';
 import diff from 'fast-diff';
 import TreeNode from '../../block/base/treeNode';
 import { ScrollPage } from '../../block/scrollPage';
-import { BACK_HASH, BRACKET_HASH, CLASS_NAMES, EVENT_KEYS } from '../../config';
+import { BACK_HASH, BRACKET_HASH, CLASS_NAMES, EVENT_KEYS, isOsx } from '../../config';
 import Selection from '../../selection';
 import { offsetInBlockAtPoint } from '../../selection/dom';
 import {
@@ -355,10 +355,16 @@ function lineBreakAutoPair(
 class Content extends TreeNode {
     private _text: string;
     protected isComposed: boolean;
+    private _pendingHanjaReconversion = false;
+    private _hanjaReconversion = false;
     private _compositionAnchor: Nullable<Text> = null;
     private _compositionLineEnd: Nullable<Element> = null;
 
     static override blockName = 'content';
+
+    get isComposing() {
+        return this.isComposed;
+    }
 
     protected get hasSelection() {
         return !!this.getCursor();
@@ -686,10 +692,72 @@ class Content extends TreeNode {
             this._seedCompositionAnchor();
         }
         else if (event.type === 'compositionend') {
+            const reconvert = this._pendingHanjaReconversion;
+            const converted = this._hanjaReconversion;
+            this._pendingHanjaReconversion = false;
+            this._hanjaReconversion = false;
             this.isComposed = false;
             this._consumeCompositionAnchor();
             // Because the compose event will not cause `input` event, So need call `inputHandler` by ourself
             this.inputHandler(event);
+            if (converted) {
+                this.jsonState.flush();
+                this.muya.editor.history.cutoff();
+            }
+            if (reconvert)
+                this._selectHangulBeforeCursor();
+        }
+    }
+
+    private _beginHanjaReconversion(selection?: IHistorySelection) {
+        // History records deferred text operations on the next frame. Flush
+        // them before cutting off, or typing and conversion share one undo op.
+        this.jsonState.flush();
+        this.muya.editor.history.cutoff(selection ?? this.selection.getSelection() ?? undefined);
+        this._hanjaReconversion = true;
+    }
+
+    private _selectHangulBeforeCursor() {
+        const cursor = this.getCursor();
+        if (!cursor?.isCollapsed)
+            return;
+
+        const end = cursor.start.offset;
+        const word = /[\uAC00-\uD7A3]+$/.exec(this.text.slice(0, end));
+        if (word) {
+            // Undo restores the original caret, not the temporary IME range.
+            const selection = this.selection.getSelection() ?? undefined;
+            this.jsonState.flush();
+            this.setCursor(end - word[0].length, end);
+            this._beginHanjaReconversion(selection);
+        }
+    }
+
+    private _prepareHanjaReconversion(event: KeyboardEvent) {
+        if (!isOsx || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.key !== EVENT_KEYS.Enter)
+            return;
+        const cursor = this.getCursor();
+        if (!cursor)
+            return;
+
+        this.domNode?.addEventListener('keyup', () => {
+            this._pendingHanjaReconversion = false;
+            if (!this.isComposed)
+                this._hanjaReconversion = false;
+        }, { once: true });
+
+        if (!cursor.isCollapsed) {
+            this._beginHanjaReconversion();
+            return;
+        }
+
+        if (this.isComposed || event.isComposing) {
+            // The final Hangul syllable commits before the Hanja composition.
+            // Selecting now is undone by that commit; select immediately after it.
+            this._pendingHanjaReconversion = true;
+        }
+        else {
+            this._selectHangulBeforeCursor();
         }
     }
 
@@ -904,6 +972,19 @@ class Content extends TreeNode {
         if (!isKeyboardEvent(event))
             return;
 
+        this._prepareHanjaReconversion(event);
+
+        // Candidate requests can precede compositionstart; the native IME,
+        // rather than editor commands or floating tools, must handle these keys.
+        if (
+            this.isComposed
+            || event.isComposing
+            || event.keyCode === 229
+            || (isOsx && event.altKey && event.key === EVENT_KEYS.Enter)
+        ) {
+            return;
+        }
+
         if (this.muya.ui.handleContentKeydown(event))
             return;
 
@@ -912,20 +993,17 @@ class Content extends TreeNode {
 
         switch (event.key) {
             case EVENT_KEYS.Backspace:
-                if (!this.isComposed)
-                    this.backspaceHandler(event);
+                this.backspaceHandler(event);
 
                 break;
 
             case EVENT_KEYS.Delete:
-                if (!this.isComposed)
-                    this.deleteHandler(event);
+                this.deleteHandler(event);
 
                 break;
 
             case EVENT_KEYS.Enter:
-                if (!this.isComposed)
-                    this.enterHandler(event);
+                this.enterHandler(event);
 
                 break;
 
@@ -936,14 +1014,12 @@ class Content extends TreeNode {
             case EVENT_KEYS.ArrowLeft: // fallthrough
 
             case EVENT_KEYS.ArrowRight: // fallthrough
-                if (!this.isComposed)
-                    this.arrowHandler(event);
+                this.arrowHandler(event);
 
                 break;
 
             case EVENT_KEYS.Tab:
-                if (!this.isComposed)
-                    this.tabHandler(event);
+                this.tabHandler(event);
 
                 break;
             default:
@@ -990,6 +1066,8 @@ class Content extends TreeNode {
     }
 
     blurHandler() {
+        this._pendingHanjaReconversion = false;
+        this._hanjaReconversion = false;
         this.scrollPage?.handleBlurFromContent(this);
     }
 
