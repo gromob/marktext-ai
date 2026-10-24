@@ -242,8 +242,13 @@ const diagramAPI = {
 }
 
 const aiAPI: AiAPI = {
-  status: () => invoke('mt::ai::status'),
-  models: () => invoke('mt::ai::models'),
+  servers: () => invoke('mt::ai::servers'),
+  saveServer: (server) => invoke('mt::ai::save-server', server),
+  deleteServer: (id) => invoke('mt::ai::delete-server', id),
+  settings: (provider) => invoke('mt::ai::settings', provider),
+  configure: (settings) => invoke('mt::ai::configure', settings),
+  status: (provider) => invoke('mt::ai::status', provider),
+  models: (provider) => invoke('mt::ai::models', provider),
   rewrite: (request) => invoke('mt::ai::rewrite', request),
   cancel: (requestId) => invoke('mt::ai::cancel', requestId)
 }

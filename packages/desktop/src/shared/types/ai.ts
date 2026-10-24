@@ -1,3 +1,37 @@
+export type AiProvider = 'codex' | 'local' | 'splash' | `server-${string}`
+
+export interface AiLocalServer {
+  id: Exclude<AiProvider, 'codex'>
+  name: string
+  baseUrl: string
+  hasApiKey: boolean
+  needsApiKey?: boolean
+  // Undefined preserves automatic discovery for profiles saved before model management.
+  models?: AiModel[]
+}
+
+export interface AiLocalServerUpdate {
+  id?: Exclude<AiProvider, 'codex'>
+  name: string
+  baseUrl: string
+  apiKey?: string
+  models: AiModel[]
+}
+
+export interface AiConnectionSettings {
+  provider: AiProvider
+  baseUrl: string
+  hasApiKey: boolean
+  needsApiKey?: boolean
+}
+
+export interface AiConnectionUpdate {
+  provider: AiProvider
+  baseUrl: string
+  // Omitted retains the saved key; an empty string removes it.
+  apiKey?: string
+}
+
 export interface AiStatus {
   available: boolean
   loggedIn: boolean
@@ -12,6 +46,7 @@ export interface AiConversationMessage {
 
 export interface AiRewriteRequest {
   requestId: string
+  provider?: AiProvider
   instruction: string
   markdown: string
   model?: string
@@ -31,8 +66,13 @@ export interface AiRewriteResult {
 }
 
 export interface AiAPI {
-  status(): Promise<AiStatus>
-  models(): Promise<AiModel[]>
+  servers(): Promise<AiLocalServer[]>
+  saveServer(server: AiLocalServerUpdate): Promise<AiLocalServer>
+  deleteServer(id: Exclude<AiProvider, 'codex'>): Promise<void>
+  settings(provider?: AiProvider): Promise<AiConnectionSettings>
+  configure(settings: AiConnectionUpdate): Promise<AiConnectionSettings>
+  status(provider?: AiProvider): Promise<AiStatus>
+  models(provider?: AiProvider): Promise<AiModel[]>
   rewrite(request: AiRewriteRequest): Promise<AiRewriteResult>
   cancel(requestId: string): Promise<void>
 }

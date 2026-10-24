@@ -107,7 +107,7 @@ export const launchElectron = async(
 // (`mt::handle-renderer-error`) that exceptionHandler.ts listens on, and
 // accumulate the count in a shared global so specs can read it back via
 // `getRendererErrors`. Multiple listeners are allowed on ipcMain.
-const installRendererErrorCounter = async(app: ElectronApplication): Promise<void> => {
+export const installRendererErrorCounter = async(app: ElectronApplication): Promise<void> => {
   await app.evaluate(({ ipcMain }) => {
     const g = global as unknown as {
       __mt_renderer_errors__?: Array<{ message?: string; name?: string; stack?: string }>

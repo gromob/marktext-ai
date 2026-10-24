@@ -66,7 +66,7 @@ describe('Codex Markdown rewriting', () => {
   it('uses stdin, constrained execution, and removes its temporary result', async() => {
     const result = await new CodexRewriter().rewrite(1, request)
     expect(result).toEqual({ markdown: '# 제목\n\n다듬은 문장.' })
-    expect(calls[0].input).toContain(JSON.stringify({ instruction: request.instruction, markdown: request.markdown }))
+    expect(calls[0].input).toContain(JSON.stringify({ connection: { provider: 'codex', model: 'default' }, instruction: request.instruction, markdown: request.markdown }))
     expect(calls[0].args).not.toContain(request.markdown)
     expect(calls[0].args).not.toContain('--model')
     expect(calls[0].args).toEqual(expect.arrayContaining([
@@ -121,7 +121,7 @@ describe('Codex Markdown rewriting', () => {
     }
     const result = await new CodexRewriter().rewrite(1, { ...request, history })
     expect(JSON.parse(calls[0].input.split('\n').at(-1) ?? '')).toEqual({
-      instruction: request.instruction, markdown: request.markdown, history
+      connection: { provider: 'codex', model: 'default' }, instruction: request.instruction, markdown: request.markdown, history
     })
     expect(result.summary).toBe('본문을 자연스러운 문장으로 다듬었습니다.')
   })

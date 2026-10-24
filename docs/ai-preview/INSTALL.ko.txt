@@ -1,13 +1,17 @@
 MarkText AI 설치 안내
 
-버전: 0.21.2-ai.2 (첫 공개 미리보기)
+버전: 0.21.2-ai.2 기반 로컬 검증 빌드 (한자 입력 수정·로컬 AI 관리 포함)
 대상: Apple Silicon Mac (M 시리즈), macOS 12 이상
 구성: Markdown 보기·편집, AI 채팅 편집과 되돌리기, 모델 선택, 채팅창 너비 조절, 문단 들여쓰기
 아이콘: MarkText AI 전용 앱 아이콘
 
-MarkText AI는 MarkText v0.21.2를 기반으로 독립적으로 개발·배포하는 커뮤니티 fork다.
-수정된 소스: https://github.com/yunju-baek/marktext-ai
-다운로드: https://github.com/yunju-baek/marktext-ai/releases/tag/v0.21.2-ai.2
+이 개선 작업은 yunju-baek/marktext-ai의 v0.21.2-ai.2를 기준으로 한다.
+원본 MarkText와 MarkText AI 개발자의 저작권·라이선스를 보존한다.
+개선 작업 저장소: https://github.com/gromob/marktext-ai
+기반 AI 프로젝트: https://github.com/yunju-baek/marktext-ai
+기준 공개 버전: https://github.com/yunju-baek/marktext-ai/releases/tag/v0.21.2-ai.2
+이번 변경은 공개 준비 중이며 위 기준 공개 설치판에는 포함되지 않는다.
+새 릴리스 버전·태그와 다운로드는 공개 시 별도로 확정한다.
 
 1. 앱 설치
 
@@ -23,8 +27,9 @@ Apple 안내: https://support.apple.com/ko-kr/102445
 2. AI 연결
 
 일반 Markdown 보기·편집은 앱 설치 후 바로 사용할 수 있다.
-AI 채팅은 대상 Mac에 설치한 Codex CLI와 해당 Mac에서 로그인한 계정으로 연결한다.
-인터넷 연결과 Codex 이용 권한이 필요하다. 계정의 사용 한도가 적용된다.
+AI 창 위쪽에서 Codex 또는 로컬 AI를 선택한다.
+Codex는 대상 Mac에 설치한 CLI와 로그인 계정으로 연결한다.
+Codex 연결에는 인터넷과 이용 권한이 필요하며 계정의 사용 한도가 적용된다.
 
 Homebrew를 사용하는 Mac에서는 터미널에서 다음 명령을 차례로 실행한다.
 
@@ -40,7 +45,23 @@ Codex CLI 설치 안내: https://developers.openai.com/codex/cli/
 로그인을 마치면 MarkText AI를 다시 실행하고 오른쪽 위 AI 버튼을 누른다.
 모델을 선택하고 채팅에 편집 요청을 입력한다.
 
-AI 요청 시 현재 문서 전체와 최근 대화가 선택한 Codex 모델로 전달된다.
+로컬 AI는 OpenAI 호환 서버를 직접 실행한 뒤 사용한다.
+AI 연결 > 로컬 AI > 서버·모델 관리에서 서버 이름·주소·필요한 API 키를 입력한다.
+모델 목록 조회를 누르면 입력한 서버 주소·키를 먼저 저장하고 조회한다.
+키 바로 아래의 서버 설정 저장 버튼으로 따로 저장할 수도 있다.
+저장된 주소 표시가 입력한 주소와 같은지 확인한다.
+모델 입력 행이 미완성이어도 서버 설정은 먼저 저장할 수 있다.
+모델 목록 조회로 모델을 등록하거나 모델 ID와 표시 이름을 직접 입력한 뒤 저장한다.
+관리 닫기 후 모델 메뉴에서 사용할 모델을 직접 선택한다.
+서버·모델의 수정·삭제도 같은 관리 화면에서 할 수 있다.
+API 키는 실제 문자열을 입력하며 {file:...} 참조는 지원하지 않는다.
+로컬 서버용 키는 사용자 선택에 따라 이 컴퓨터의 앱 설정 파일에 평문으로 저장한다.
+로컬 AI 키에는 키체인을 사용하지 않으며 배포 파일에 키를 포함하지 않는다.
+이전 버전에서 암호화한 키는 서버·모델 관리에서 한 번 다시 입력해 저장한다.
+서버 실행과 모델 로딩은 사용자가 담당한다. 연결 실패 시 다른 모델로 자동 전환하지 않는다.
+새 서버 추가는 자동 검사를 통과했으며 사용자의 실제 서버 추가 확인은 아직 하지 않았다.
+
+AI 요청 시 현재 문서 전체와 최근 대화가 선택한 Codex 또는 로컬 서버로 전달된다.
 본문은 최대 300,000자, 편집 요청은 최대 8,000자, 최근 대화는 최대 10개·합계 24,000자다.
 대화 메시지 하나는 8,000자 이내로 전달하며, 응답 대기 한도는 3분이다.
 모델과 채팅창 너비는 로컬에 저장하고, 대화는 실행 중인 앱 메모리에서 문서별로 유지한다.
@@ -67,4 +88,4 @@ AI 편집 직후 채팅의 되돌리기로 직전 내용을 복구할 수 있다
 기반 버전: v0.21.2 (ae7a869c989950a3a56ce5c2f7fc0df12c652933)
 원본 저작권: Copyright (c) 2017-present Luo Ran; Copyright (c) 2018-present MarkText Contributors
 라이선스: MIT (동봉한 LICENSE.txt와 앱의 THIRD-PARTY-LICENSES.txt 참조)
-이 fork의 문제 보고: https://github.com/yunju-baek/marktext-ai/issues
+이 개선 작업의 문제 보고: https://github.com/gromob/marktext-ai/issues

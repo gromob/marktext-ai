@@ -170,7 +170,7 @@ test('an unchanged response records the conversation and preserves the document'
     await page.getByTestId('ai-toggle').click()
     await send(page)
     await expect(page.getByTestId('ai-message-assistant')).toContainText(
-      '현재 문서에 반영되어 있습니다.'
+      '현재 표현을 유지했습니다.'
     )
     await expect(page.locator('.editor-component')).toContainText('Original.')
     await expect(page.getByTestId('ai-undo')).toHaveCount(0)

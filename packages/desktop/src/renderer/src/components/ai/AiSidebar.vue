@@ -12,6 +12,10 @@
         :class="{ ready: connected }"
         :title="connectionHint"
       />
+      <span
+        class="connection-status"
+        role="status"
+      >{{ connectionHint }}</span>
       <button
         v-if="!connected && !checkingConnection"
         class="text-button reconnect"
@@ -33,6 +37,94 @@
         ><path d="m5 5 10 10M15 5 5 15" /></svg>
       </button>
     </header>
+    <div class="connection-controls">
+      <label>AI 연결
+        <select
+          v-model="connectionMode"
+          data-testid="ai-provider"
+          :disabled="busy || showManager || checkingConnection || savingSettings"
+          @change="changeProvider"
+        >
+          <option value="codex">Codex</option>
+          <option value="local">로컬 AI</option>
+        </select>
+      </label>
+      <button
+        v-if="provider !== 'codex'"
+        type="button"
+        class="text-button"
+        :disabled="busy || showManager || checkingConnection"
+        @click="showSettings = !showSettings"
+      >
+        연결 설정
+      </button>
+      <button
+        v-if="connectionMode === 'local'"
+        type="button"
+        class="text-button"
+        data-testid="ai-manage-servers"
+        :disabled="busy || checkingConnection || savingSettings"
+        @click="showManager = !showManager; showSettings = false"
+      >
+        {{ showManager ? '관리 닫기' : '서버·모델 관리' }}
+      </button>
+    </div>
+    <LocalAiManager
+      v-if="showManager && connectionMode === 'local'"
+      :initial-provider="provider"
+      :catalogs="localCatalogs"
+      @changed="refreshManagedServers"
+    />
+    <form
+      v-if="showSettings && provider !== 'codex'"
+      class="connection-settings"
+      @submit.prevent="saveConnection"
+    >
+      <label>{{ localCatalogs.find(catalog => catalog.provider === provider)?.name || (provider === 'splash' ? 'Splash' : 'Strata') }} 서버 주소
+        <input
+          v-model="baseUrl"
+          data-testid="ai-base-url"
+          placeholder="http://127.0.0.1:8081/v1"
+          :disabled="busy || savingSettings"
+          required
+        >
+      </label>
+      <label>API 키 (필요한 경우 · 평문 저장)
+        <input
+          v-model="apiKey"
+          data-testid="ai-api-key"
+          type="password"
+          autocomplete="off"
+          :placeholder="hasApiKey ? '기본/저장된 키 사용 · 입력하면 교체' : '인증 없는 서버는 비워 두세요'"
+          :disabled="busy || savingSettings"
+        >
+      </label>
+      <p
+        v-if="needsApiKey"
+        role="status"
+      >
+        이전 키를 한 번 다시 입력하고 저장하세요. 새 버전은 키체인을 사용하지 않습니다.
+      </p>
+      <label v-if="hasApiKey"><input
+        v-model="removeKey"
+        type="checkbox"
+        :disabled="busy || savingSettings"
+      >저장된 키 삭제</label>
+      <p
+        v-if="settingsError"
+        role="alert"
+      >
+        {{ settingsError }}
+      </p>
+      <button
+        type="submit"
+        class="text-button"
+        :disabled="busy || checkingConnection || savingSettings"
+      >
+        저장하고 연결
+      </button>
+      <p>현재 문서와 대화가 지정한 서버로 전달됩니다.</p>
+    </form>
     <div
       ref="messageList"
       class="chat-messages"
@@ -97,25 +189,26 @@
       <div class="composer-tools">
         <select
           id="ai-model"
-          v-model="selectedModel"
+          :value="menuModel"
           data-testid="ai-model"
           aria-label="AI 모델"
           :title="modelError || 'AI 모델 선택'"
-          :disabled="busy || loadingModels"
+          :disabled="busy || showManager || loadingModels || checkingConnection || savingSettings"
+          @change="selectModel"
         >
           <option value="">
-            Codex 기본 모델
+            {{ provider === 'codex' ? 'Codex 기본 모델' : '모델을 선택하세요' }}
           </option>
           <option
-            v-if="selectedModel && !models.some(model => model.id === selectedModel)"
+            v-if="provider === 'codex' && selectedModel && !models.some(model => model.id === selectedModel)"
             :value="selectedModel"
           >
             {{ selectedModel }}
           </option>
           <option
-            v-for="model in models"
-            :key="model.id"
-            :value="model.id"
+            v-for="model in menuOptions"
+            :key="model.value"
+            :value="model.value"
           >
             {{ model.name }}
           </option>
@@ -146,7 +239,7 @@
           type="submit"
           data-testid="ai-generate"
           aria-label="보내기"
-          :disabled="!connected || !draft.trim() || loadingModels"
+          :disabled="checkingConnection || savingSettings || showManager || !connected || !draft.trim() || loadingModels || !modelAvailable"
         >
           <svg
             viewBox="0 0 20 20"
@@ -161,6 +254,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import LocalAiManager from './LocalAiManager.vue'
+import type { AiProvider } from '@shared/types/ai'
+import { localModelOptions, localModelValue, type LocalAiCatalog, type LocalAiProvider } from '@/util/localAiModels'
 import { useEditorStore } from '@/store/editor'
 import { useAiEditorStore } from '@/store/aiEditor'
 
@@ -188,27 +284,49 @@ const messageList = ref<HTMLDivElement | null>(null)
 const connection = ref<Awaited<ReturnType<typeof window.electron.ai.status>> | null>(null)
 const checkingConnection = ref(false)
 const connected = computed(() => !!(connection.value?.available && connection.value.loggedIn))
-const connectionHint = computed(() => checkingConnection.value ? 'Codex 연결 확인 중' : connected.value ? 'Codex 연결됨' : 'Codex 연결 필요')
+const provider = ref<AiProvider>('codex')
+const connectionMode = ref<'codex' | 'local'>('codex')
+const localCatalogs = ref<LocalAiCatalog[]>([])
+const lastLocalKey = 'marktext-ai:last-local-provider'
+const readLastLocal = (): LocalAiProvider => {
+  try { return (localStorage.getItem(lastLocalKey) || 'local') as LocalAiProvider } catch { return 'local' }
+}
+const baseUrl = ref('http://127.0.0.1:8081/v1')
+const apiKey = ref('')
+const hasApiKey = ref(false)
+const needsApiKey = ref(false)
+const removeKey = ref(false)
+const showSettings = ref(false)
+const showManager = ref(false)
+const savingSettings = ref(false)
+const settingsError = ref('')
+const providerName = computed(() => provider.value === 'codex' ? 'Codex' : '로컬 AI')
+const connectionHint = computed(() => `${providerName.value} ${checkingConnection.value ? '연결 확인 중' : connected.value ? '연결됨' : '연결 필요'}`)
 const models = ref<Awaited<ReturnType<typeof window.electron.ai.models>>>([])
 const loadingModels = ref(false)
 const modelError = ref('')
-const modelStorageKey = 'marktext-ai:selected-model'
+const modelStorageKey = () => provider.value === 'codex' ? 'marktext-ai:selected-model' : provider.value === 'splash' ? 'marktext-ai:splash-selected-model' : provider.value === 'local' ? 'marktext-ai:local-selected-model' : `marktext-ai:${provider.value}:selected-model`
 const readSavedModel = () => {
-  try { return localStorage.getItem(modelStorageKey) || '' } catch { return '' }
+  try { return localStorage.getItem(modelStorageKey()) || (provider.value === 'splash' ? 'mlx-community/Qwen3.8-27B-4bit' : '') } catch { return '' }
 }
 const selectedModel = ref(readSavedModel())
 watch(selectedModel, model => {
   try {
-    if (model) localStorage.setItem(modelStorageKey, model)
-    else localStorage.removeItem(modelStorageKey)
+    if (model) localStorage.setItem(modelStorageKey(), model)
+    else localStorage.removeItem(modelStorageKey())
   } catch {
     // A storage policy may prevent saving preferences while editing remains available.
   }
-})
+}, { flush: 'sync' })
+const menuOptions = computed(() => provider.value === 'codex'
+  ? models.value.map(model => ({ ...model, value: model.id }))
+  : localModelOptions(localCatalogs.value, selectedModel.value ? { provider: provider.value, id: selectedModel.value } : undefined))
+const menuModel = computed(() => provider.value === 'codex' ? selectedModel.value : selectedModel.value ? localModelValue(provider.value, selectedModel.value) : '')
+const modelAvailable = computed(() => provider.value === 'codex' || localModelOptions(localCatalogs.value).some(model => model.available && model.value === menuModel.value))
 const activeRequest = ref<{ id: string; documentId: string } | null>(null)
 const cancelling = ref(false)
 const busy = computed(() => activeRequest.value !== null)
-const errorText = (cause: unknown) => cause instanceof Error ? cause.message : String(cause)
+const errorText = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause)).replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '')
 
 const addMessage = (documentId: string, message: Omit<ChatMessage, 'id'>) => {
   const messages = conversations.get(documentId) || []
@@ -240,29 +358,142 @@ const refreshModels = async () => {
   loadingModels.value = true
   modelError.value = ''
   try {
-    models.value = await window.electron.ai.models()
+    if (provider.value !== 'codex') {
+      const servers = await window.electron.ai.servers()
+      const sources = servers.map(server => server.id)
+      const results = await Promise.allSettled(sources.map(source => window.electron.ai.models(source)))
+      localCatalogs.value = results.map((result, index) => result.status === 'fulfilled'
+        ? { provider: sources[index], models: result.value, registered: servers[index].models, ...(servers[index].models !== undefined ? { name: servers[index].name } : {}) }
+        : { provider: sources[index], models: [], registered: servers[index].models, name: servers[index].name, error: errorText(result.reason) })
+      const active = localCatalogs.value.find(catalog => catalog.provider === provider.value)
+      connection.value = !active || active.error ? { available: false, loggedIn: false, error: active?.error || '서버·모델 관리에서 서버를 등록하고 사용할 모델을 선택하세요.' } : { available: true, loggedIn: true }
+      if (active?.registered !== undefined && !active.registered.some(model => model.id === selectedModel.value)) selectedModel.value = ''
+      if (!active) selectedModel.value = ''
+      if (active?.error) {
+        modelError.value = active.error
+        addReply(currentDocumentId.value, modelError.value, true)
+      }
+      return
+    }
+    models.value = await window.electron.ai.models('codex')
     if (selectedModel.value && !models.value.some(model => model.id === selectedModel.value)) selectedModel.value = ''
   } catch {
     models.value = []
     selectedModel.value = ''
-    modelError.value = '모델 목록을 다시 확인하려면 AI를 열어주세요. 현재는 Codex 기본 모델을 사용합니다.'
+    modelError.value = '모델 목록을 가져오지 못했습니다. 다시 연결해 주세요.'
+    addReply(currentDocumentId.value, modelError.value, true)
   } finally { loadingModels.value = false }
 }
 const checkConnection = async () => {
   if (checkingConnection.value || busy.value) return
   checkingConnection.value = true
-  const documentId = currentDocumentId.value
   try {
-    connection.value = await window.electron.ai.status()
+    if (provider.value !== 'codex') { await refreshModels(); return }
+    connection.value = await window.electron.ai.status('codex')
     if (connected.value) await refreshModels()
-    else addReply(documentId, connection.value.error || '터미널에서 codex login으로 로그인한 뒤 다시 연결해주세요.', true)
+    else addReply(currentDocumentId.value, connection.value.error || '터미널에서 codex login으로 로그인한 뒤 다시 연결해주세요.', true)
   } catch (cause) {
     connection.value = { available: false, loggedIn: false }
-    addReply(documentId, errorText(cause), true)
+    addReply(currentDocumentId.value, errorText(cause), true)
   } finally { checkingConnection.value = false }
 }
+const acceptSettings = (settings: Awaited<ReturnType<typeof window.electron.ai.settings>>, model?: string) => {
+  provider.value = settings.provider
+  connectionMode.value = settings.provider === 'codex' ? 'codex' : 'local'
+  if (settings.provider !== 'codex') {
+    try { localStorage.setItem(lastLocalKey, settings.provider) } catch { /* Model selection remains usable without persistence. */ }
+  }
+  baseUrl.value = settings.baseUrl
+  hasApiKey.value = settings.hasApiKey
+  needsApiKey.value = !!settings.needsApiKey
+  apiKey.value = ''
+  removeKey.value = false
+  selectedModel.value = model ?? readSavedModel()
+}
+const saveConnection = async () => {
+  if (busy.value || checkingConnection.value || savingSettings.value) return
+  savingSettings.value = true
+  settingsError.value = ''
+  connection.value = null
+  models.value = []
+  try {
+    acceptSettings(await window.electron.ai.configure({
+      provider: provider.value, baseUrl: baseUrl.value,
+      ...(removeKey.value ? { apiKey: '' } : apiKey.value ? { apiKey: apiKey.value } : {})
+    }))
+    showSettings.value = false
+  } catch (cause) {
+    settingsError.value = errorText(cause)
+    showSettings.value = true
+    try { acceptSettings(await window.electron.ai.settings()) } catch { /* Keep the editable form when settings cannot be read. */ }
+  } finally { savingSettings.value = false }
+  if (!settingsError.value) await checkConnection()
+}
+const switchProvider = async (selected: AiProvider, model?: string) => {
+  if (busy.value || checkingConnection.value || savingSettings.value) return
+  savingSettings.value = true
+  settingsError.value = ''
+  connection.value = null
+  models.value = []
+  try {
+    const saved = await window.electron.ai.settings(selected)
+    acceptSettings(await window.electron.ai.configure({ provider: selected, baseUrl: saved.baseUrl }), model)
+  } catch (cause) {
+    settingsError.value = errorText(cause)
+    addReply(currentDocumentId.value, settingsError.value, true)
+    try { acceptSettings(await window.electron.ai.settings()) } catch { /* Leave sending disabled until settings can be read. */ }
+  } finally { savingSettings.value = false }
+  if (!settingsError.value) await checkConnection()
+  if (provider.value !== 'codex' && !connected.value) showSettings.value = true
+}
+const changeProvider = async () => {
+  if (connectionMode.value === 'codex') { await switchProvider('codex'); return }
+  const last = readLastLocal()
+  const servers = await window.electron.ai.servers()
+  if (!servers.some(server => server.id === last)) {
+    provider.value = last
+    selectedModel.value = ''
+    baseUrl.value = ''
+    connection.value = null
+    localCatalogs.value = []
+    showManager.value = true
+    showSettings.value = false
+    return
+  }
+  await switchProvider(last)
+}
+const selectModel = async (event: Event) => {
+  if (busy.value || checkingConnection.value || savingSettings.value || loadingModels.value) return
+  const value = (event.target as HTMLSelectElement).value
+  if (provider.value === 'codex') { selectedModel.value = value; return }
+  if (!value) { selectedModel.value = ''; return }
+  const option = localModelOptions(localCatalogs.value, selectedModel.value ? { provider: provider.value, id: selectedModel.value } : undefined).find(model => model.value === value)
+  if (!option) return
+  if (option.provider === provider.value) selectedModel.value = option.id
+  else await switchProvider(option.provider, option.id)
+}
+const initializeConnection = async () => {
+  if (busy.value || checkingConnection.value || savingSettings.value) return
+  checkingConnection.value = true
+  try { acceptSettings(await window.electron.ai.settings()) } catch (cause) {
+    connection.value = null
+    addReply(currentDocumentId.value, errorText(cause), true)
+    return
+  } finally { checkingConnection.value = false }
+  await checkConnection()
+}
+const refreshManagedServers = async () => {
+  try { acceptSettings(await window.electron.ai.settings(provider.value), selectedModel.value) } catch {
+    baseUrl.value = ''
+    hasApiKey.value = false
+    needsApiKey.value = false
+    apiKey.value = ''
+    selectedModel.value = ''
+  }
+  await checkConnection()
+}
 const send = async () => {
-  if (busy.value || !connected.value || loadingModels.value || !draft.value.trim()) return
+  if (busy.value || checkingConnection.value || savingSettings.value || !connected.value || showManager.value || loadingModels.value || !draft.value.trim() || !modelAvailable.value) return
   const documentId = currentDocumentId.value
   let snapshot
   try { snapshot = aiEditor.capture('document') } catch (cause) {
@@ -276,14 +507,14 @@ const send = async () => {
   const requestId = crypto.randomUUID()
   activeRequest.value = { id: requestId, documentId }
   try {
-    const result = await window.electron.ai.rewrite({ requestId, instruction, markdown: snapshot.markdown, model: selectedModel.value || undefined, history })
+    const result = await window.electron.ai.rewrite({ requestId, provider: provider.value, instruction, markdown: snapshot.markdown, model: selectedModel.value || undefined, history })
     if (activeRequest.value?.id !== requestId || cancelling.value) return
     if (result.markdown === snapshot.markdown) {
       const current = aiEditor.capture('document')
       if (current.documentId !== snapshot.documentId || current.documentMarkdown !== snapshot.documentMarkdown) {
         throw new Error('문서가 바뀌었습니다. 현재 내용을 기준으로 다시 요청해주세요.')
       }
-      addReply(documentId, '현재 문서에 반영되어 있습니다.')
+      addReply(documentId, result.summary?.trim() || '문서를 변경하지 않았습니다.')
     } else {
       aiEditor.apply(snapshot, result.markdown)
       clearUndoLinks()
@@ -337,11 +568,11 @@ watch(() => [currentDocumentId.value, currentMessages.value.length, busy.value, 
   if (messageList.value) messageList.value.scrollTop = messageList.value.scrollHeight
 })
 watch(() => props.visible, visible => {
-  if (visible) void checkConnection()
+  if (visible) void initializeConnection()
   else void cancelRewrite()
 })
 onMounted(() => {
-  void checkConnection()
+  void initializeConnection()
   window.addEventListener('beforeunload', releaseRequest)
 })
 onBeforeUnmount(() => {
@@ -351,6 +582,14 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.connection-status { font-size: 11px; color: var(--editorColor50); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.connection-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; padding: 8px 12px; gap: 8px; }
+.connection-controls select { margin-left: 6px; max-width: 140px; }
+.connection-settings { display: grid; gap: 8px; padding: 12px; }
+.connection-settings label { display: block; font-size: 12px; }
+.connection-settings input:not([type="checkbox"]) { box-sizing: border-box; display: block; width: 100%; margin-top: 4px; padding: 6px; }
+.connection-settings p { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+
 .ai-sidebar { box-sizing: border-box; width: var(--ai-sidebar-width, 370px); flex: 0 0 var(--ai-sidebar-width, 370px); min-width: 0; display: flex; flex-direction: column; border-left: 1px solid var(--editorColor10); background: var(--editorBgColor); color: var(--editorColor80); font-size: 13px; line-height: 1.65; text-align: left; }
 .ai-sidebar * { box-sizing: border-box; }
 .ai-sidebar button, .ai-sidebar select, .ai-sidebar textarea { font: inherit; }

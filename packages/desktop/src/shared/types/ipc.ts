@@ -34,7 +34,7 @@ import type {
 import type { BufferedState as BufferedStateType } from './bufferedState'
 import type { MenuTemplate, MenuPopupPosition } from './menu'
 import type { PandocCommandInfo } from './pandoc'
-import type { AiModel, AiRewriteRequest, AiRewriteResult, AiStatus } from './ai'
+import type { AiConnectionSettings, AiConnectionUpdate, AiLocalServer, AiLocalServerUpdate, AiProvider, AiModel, AiRewriteRequest, AiRewriteResult, AiStatus } from './ai'
 
 export interface SaveDialogRequest {
   title?: string
@@ -51,8 +51,13 @@ export type PlantumlFetchResult =
 // =================================================================
 
 export interface IpcInvokeChannels {
-  'mt::ai::status': { args: []; ret: AiStatus }
-  'mt::ai::models': { args: []; ret: AiModel[] }
+  'mt::ai::servers': { args: []; ret: AiLocalServer[] }
+  'mt::ai::save-server': { args: [server: AiLocalServerUpdate]; ret: AiLocalServer }
+  'mt::ai::delete-server': { args: [id: Exclude<AiProvider, 'codex'>]; ret: void }
+  'mt::ai::settings': { args: [provider?: AiProvider]; ret: AiConnectionSettings }
+  'mt::ai::configure': { args: [settings: AiConnectionUpdate]; ret: AiConnectionSettings }
+  'mt::ai::status': { args: [provider?: AiProvider]; ret: AiStatus }
+  'mt::ai::models': { args: [provider?: AiProvider]; ret: AiModel[] }
   'mt::ai::rewrite': { args: [request: AiRewriteRequest]; ret: AiRewriteResult }
   'mt::ai::cancel': { args: [requestId: string]; ret: void }
   'mt::ask-for-image-path': { args: []; ret: string[] }
