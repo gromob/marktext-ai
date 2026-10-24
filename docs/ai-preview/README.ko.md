@@ -11,6 +11,7 @@ Markdown 문서 옆의 채팅창에서 질문하거나 문서 수정을 요청�
 - macOS 한글→한자 변환 중복, 불필요한 문단 분리, 실행 취소·커서 복원을 수정했다.
 - Codex와 로컬 AI 연결을 선택하고, 로컬 서버·모델을 직접 추가·수정·삭제할 수 있다.
 - 로컬 모델의 일반 질문 답변과 Markdown 편집을 구분하고, 오류나 오래된 응답으로 문서를 변경하지 않는다.
+- AI 창의 대화·입력·메뉴 글꼴 크기를 함께 조절하며 Preferences와 연동한다.
 
 ## 사용법
 
@@ -21,7 +22,7 @@ Markdown 문서 옆의 채팅창에서 질문하거나 문서 수정을 요청�
 
 로컬 서버 주소·키·모델 등록과 삭제는 [로컬 AI 연결 안내](LOCAL-AI.ko.md)를 참고한다. 서버 실행과 모델 로딩은 사용자가 담당하며 실패 시 다른 모델로 자동 전환하지 않는다.
 
-AI 창 왼쪽 경계를 드래그해 너비를 조절하고, 두 번 클릭해 기본 너비로 되돌릴 수 있다.
+AI 창의 **A− / A+** 또는 **Preferences → Editor → AI 창 글꼴 크기**에서 12–24px로 조절한다. 대화·입력창·연결 및 모델 메뉴·서버 관리에 함께 적용하며 다음 실행에도 유지한다. 창 왼쪽 경계를 드래그해 너비를 조절하고, 두 번 클릭해 기본 너비로 되돌릴 수 있다.
 
 일반 문단에서 **Tab / Shift+Tab**은 들여쓰기·내어쓰기를 적용하고, 목록에서는 기존 목록 중첩을 조절한다. 일반 문단 들여쓰기는 줄 앞의 고정 공백(NBSP, U+00A0)으로 저장한다.
 
@@ -42,10 +43,10 @@ pnpm run typecheck
 pnpm run lint
 pnpm -C packages/desktop exec vitest run test/unit/specs/ai-codex.spec.ts test/unit/specs/ai-codex-models.spec.ts test/unit/specs/ai-editor.spec.ts test/unit/specs/ai-local.spec.ts test/unit/specs/ai-connection.spec.ts test/unit/specs/ai-local-model-options.spec.ts
 pnpm run build:unpack
-pnpm -C packages/desktop exec playwright test test/e2e/ai-editing.spec.ts test/e2e/ai-wysiwyg-selection.spec.ts test/e2e/ai-local-editing.spec.ts
+pnpm -C packages/desktop exec playwright test test/e2e/ai-editing.spec.ts test/e2e/ai-wysiwyg-selection.spec.ts test/e2e/ai-local-editing.spec.ts test/e2e/ai-font-size.spec.ts
 ```
 
-[로컬 AI 검증 범위](LOCAL-AI.ko.md#검증-범위)와 [한자 입력 검증 기록](HANJA-IME-VALIDATION.ko.md)을 구분한다. 실제 macOS IME 확인은 합성 입력 자동 검사만으로 대체하지 않는다. 공개용 버전·태그와 해당 설치판 빌드는 후속 단계다.
+[최종 통합 검사 기록](INTEGRATION-VALIDATION.ko.md): 2026-10-24 관련 단위 159개와 E2E 47개, 총 206개가 통과했다. 타입·린트·빌드도 확인했다. [로컬 AI 검증 범위](LOCAL-AI.ko.md#검증-범위)와 [한자 입력 검증 기록](HANJA-IME-VALIDATION.ko.md)을 구분하며 실제 macOS IME 확인은 합성 입력 자동 검사만으로 대체하지 않는다. 공개용 버전·태그와 해당 설치판 빌드는 후속 단계다.
 
 ## 설치판 빌드
 

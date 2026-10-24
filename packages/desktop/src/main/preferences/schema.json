@@ -83,6 +83,13 @@
     "minimum": 12,
     "default": 16
   },
+  "aiFontSize": {
+    "description": "AI sidebar font size in pixels (conversation, input and menus)",
+    "type": "integer",
+    "maximum": 24,
+    "minimum": 12,
+    "default": 13
+  },
   "lineHeight": {
     "description": "Editor--Line Height",
     "type": "number",

@@ -81,6 +81,8 @@ Finder에서 .md 파일 하나를 선택하고 Command+I로 정보 창을 연다
 목록 항목: Tab으로 하위 목록, Shift+Tab으로 상위 목록.
 AI 채팅: Enter로 요청, Shift+Enter로 줄바꿈.
 채팅창 왼쪽 경계를 드래그하면 너비를 조절할 수 있다.
+AI 창의 A− / A+ 또는 Preferences > Editor > AI 창 글꼴 크기에서 12–24px로 조절한다.
+대화·입력창·모델과 연결 메뉴·서버 관리 화면의 글자에 함께 적용하고 다음 실행에도 유지한다.
 AI 편집 직후 채팅의 되돌리기로 직전 내용을 복구할 수 있다.
 
 앱 설정과 복구 데이터: ~/Library/Application Support/MarkText AI

@@ -265,10 +265,11 @@ onMounted(() => void run(async () => {
 </script>
 
 <style scoped>
-.local-manager { padding: 12px; max-height: 55vh; min-height: 0; flex-shrink: 1; overflow-y: auto; border-bottom: 1px solid var(--editorColor10); font-size: 12px; }
+.local-manager { padding: 12px; max-height: 55vh; min-height: 0; flex-shrink: 1; overflow-y: auto; border-bottom: 1px solid var(--editorColor10); font-size: 0.923077em; }
 fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 label { display: block; margin: 6px 0; }
 input:not([type="checkbox"]), select { box-sizing: border-box; width: 100%; display: block; padding: 5px; background: var(--editorBgColor); color: var(--editorColor80); border: 1px solid var(--editorColor20); }
+input, select { font: inherit; }
 button { margin: 4px 8px 4px 0; font: inherit; cursor: pointer; }
 button:disabled { opacity: .5; cursor: default; }
 .primary-button { border: 0; border-radius: 5px; padding: 7px 10px; background: var(--themeColor); color: var(--buttonPrimaryFontColor); }

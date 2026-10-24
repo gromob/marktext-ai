@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import bus from '../bus'
+import { DEFAULT_AI_FONT_SIZE } from '@shared/aiTypography'
 import { setLanguage } from '../i18n'
 
 // Finite-value unions where the runtime currently constrains the field.
@@ -42,6 +43,7 @@ export interface PreferencesState {
   // ----- Editor / typography -----
   editorFontFamily: string
   fontSize: number
+  aiFontSize: number
   lineHeight: number
   codeFontSize: number
   codeFontFamily: string
@@ -169,6 +171,7 @@ export const usePreferencesStore = defineStore('preferences', {
 
     editorFontFamily: 'Open Sans',
     fontSize: 16,
+    aiFontSize: DEFAULT_AI_FONT_SIZE,
     lineHeight: 1.6,
     codeFontSize: 14,
     codeFontFamily: 'DejaVu Sans Mono',

@@ -20,6 +20,7 @@ export interface IUserPreferences {
   defaultDirectoryToOpen?: string
   language?: string
   editorFontFamily?: string
+  aiFontSize?: number
   fontSize?: number
   lineHeight?: number
   codeFontSize?: number

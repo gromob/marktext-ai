@@ -18,6 +18,16 @@
           :on-change="(value) => onSelectChange('fontSize', value)"
         />
         <range
+          data-testid="ai-font-size-preference"
+          :description="t('preferences.editor.textEditor.aiFontSize')"
+          :value="aiFontSize"
+          :min="MIN_AI_FONT_SIZE"
+          :max="MAX_AI_FONT_SIZE"
+          unit="px"
+          :step="1"
+          :on-change="(value) => onSelectChange('aiFontSize', value)"
+        />
+        <range
           :description="t('preferences.editor.textEditor.lineHeight')"
           :value="lineHeight"
           :min="1.2"
@@ -192,6 +202,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
+import { MIN_AI_FONT_SIZE, MAX_AI_FONT_SIZE } from '@shared/aiTypography'
 import { usePreferencesStore } from '@/store/preferences'
 import type { PreferencesState } from '@/store/preferences'
 import Compound from '../common/compound/index.vue'
@@ -215,6 +226,7 @@ const defaultEncodingOptions = getDefaultEncodingOptions()
 
 const {
   fontSize,
+  aiFontSize,
   editorFontFamily,
   lineHeight,
   autoPairBracket,

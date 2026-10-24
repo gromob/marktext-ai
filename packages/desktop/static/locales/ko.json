@@ -536,6 +536,9 @@
       "title": "편집기",
       "textEditor": {
         "title": "텍스트 편집기",
+        "aiFontSize": "AI 창 글꼴 크기",
+        "decreaseAiFontSize": "AI 글꼴 작게",
+        "increaseAiFontSize": "AI 글꼴 크게",
         "fontSize": "글꼴 크기",
         "lineHeight": "줄 높이",
         "fontFamily": "글꼴 패밀리",

@@ -536,6 +536,9 @@
       "title": "Editor",
       "textEditor": {
         "title": "Text Editor",
+        "aiFontSize": "AI window font size",
+        "decreaseAiFontSize": "Decrease AI font size",
+        "increaseAiFontSize": "Increase AI font size",
         "fontSize": "Font size",
         "lineHeight": "Line height",
         "fontFamily": "Font family",

@@ -2,6 +2,7 @@
   <aside
     id="ai-sidebar"
     class="ai-sidebar"
+    :style="{ '--ai-font-size': `${aiFontSize}px` }"
     data-testid="ai-sidebar"
     aria-label="AI 채팅"
   >
@@ -37,6 +38,33 @@
         ><path d="m5 5 10 10M15 5 5 15" /></svg>
       </button>
     </header>
+    <div class="font-controls">
+      <span>{{ t('preferences.editor.textEditor.aiFontSize') }}</span>
+      <div class="font-buttons">
+        <button
+          type="button"
+          data-testid="ai-font-smaller"
+          :aria-label="t('preferences.editor.textEditor.decreaseAiFontSize')"
+          :disabled="aiFontSize <= MIN_AI_FONT_SIZE"
+          @click="adjustFontSize(-1)"
+        >
+          A−
+        </button>
+        <output
+          data-testid="ai-font-size"
+          aria-live="polite"
+        >{{ aiFontSize }} px</output>
+        <button
+          type="button"
+          data-testid="ai-font-larger"
+          :aria-label="t('preferences.editor.textEditor.increaseAiFontSize')"
+          :disabled="aiFontSize >= MAX_AI_FONT_SIZE"
+          @click="adjustFontSize(1)"
+        >
+          A+
+        </button>
+      </div>
+    </div>
     <div class="connection-controls">
       <label>AI 연결
         <select
@@ -254,6 +282,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
+import { MIN_AI_FONT_SIZE, MAX_AI_FONT_SIZE } from '@shared/aiTypography'
+import { usePreferencesStore } from '@/store/preferences'
 import LocalAiManager from './LocalAiManager.vue'
 import type { AiProvider } from '@shared/types/ai'
 import { localModelOptions, localModelValue, type LocalAiCatalog, type LocalAiProvider } from '@/util/localAiModels'
@@ -270,6 +301,12 @@ type ChatMessage = {
 }
 const props = withDefaults(defineProps<{ visible?: boolean }>(), { visible: true })
 defineEmits<{ close: [] }>()
+const { t } = useI18n()
+const preferences = usePreferencesStore()
+const { aiFontSize } = storeToRefs(preferences)
+const adjustFontSize = (delta: number) => preferences.SET_SINGLE_PREFERENCE({
+  type: 'aiFontSize', value: Math.max(MIN_AI_FONT_SIZE, Math.min(MAX_AI_FONT_SIZE, aiFontSize.value + delta))
+})
 const aiEditor = useAiEditorStore()
 const { currentFile } = storeToRefs(useEditorStore())
 const currentDocumentId = computed(() => currentFile.value?.id || '')
@@ -582,30 +619,34 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.connection-status { font-size: 11px; color: var(--editorColor50); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.font-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 12px; font-size: 0.923077em; }
+.font-buttons { display: flex; align-items: center; gap: 6px; }
+.font-buttons button { padding: 3px 7px; border: 1px solid var(--editorColor20); border-radius: 4px; color: var(--editorColor80); background: transparent; }
+.font-buttons output { min-width: 3.5em; text-align: center; }
+.connection-status { font-size: 0.846154em; color: var(--editorColor50); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .connection-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; padding: 8px 12px; gap: 8px; }
 .connection-controls select { margin-left: 6px; max-width: 140px; }
 .connection-settings { display: grid; gap: 8px; padding: 12px; }
-.connection-settings label { display: block; font-size: 12px; }
+.connection-settings label { display: block; font-size: 0.923077em; }
 .connection-settings input:not([type="checkbox"]) { box-sizing: border-box; display: block; width: 100%; margin-top: 4px; padding: 6px; }
-.connection-settings p { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+.connection-settings p { margin: 0; font-size: 0.923077em; overflow-wrap: anywhere; }
 
-.ai-sidebar { box-sizing: border-box; width: var(--ai-sidebar-width, 370px); flex: 0 0 var(--ai-sidebar-width, 370px); min-width: 0; display: flex; flex-direction: column; border-left: 1px solid var(--editorColor10); background: var(--editorBgColor); color: var(--editorColor80); font-size: 13px; line-height: 1.65; text-align: left; }
+.ai-sidebar { box-sizing: border-box; width: var(--ai-sidebar-width, 370px); flex: 0 0 var(--ai-sidebar-width, 370px); min-width: 0; display: flex; flex-direction: column; border-left: 1px solid var(--editorColor10); background: var(--editorBgColor); color: var(--editorColor80); font-size: var(--ai-font-size, 13px); line-height: 1.65; text-align: left; }
 .ai-sidebar * { box-sizing: border-box; }
-.ai-sidebar button, .ai-sidebar select, .ai-sidebar textarea { font: inherit; }
+.ai-sidebar button, .ai-sidebar select, .ai-sidebar textarea, .ai-sidebar input { font: inherit; }
 .ai-sidebar button { cursor: pointer; }
 .ai-sidebar button:disabled { opacity: .4; cursor: default; }
 .ai-sidebar button:focus-visible, .ai-sidebar select:focus-visible, .ai-sidebar textarea:focus-visible { outline: 2px solid var(--themeColor); outline-offset: 2px; }
 .ai-sidebar p { margin: 0; }
 .ai-sidebar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .chat-header { display: flex; align-items: center; gap: 8px; padding: 16px 18px 10px; }
-.chat-header strong { font-size: 14px; font-weight: 600; }
+.chat-header strong { font-size: 1.076923em; font-weight: 600; }
 .connection-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--editorColor40); }
 .connection-dot.ready { background: #39a576; }
-.icon-button { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 7px; color: var(--editorColor60); background: transparent; }
+.icon-button { font-size: 1em; display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 7px; color: var(--editorColor60); background: transparent; }
 .icon-button:hover:enabled { background: var(--editorColor04); }
 .close-button { margin-left: auto; }
-.text-button { padding: 0; border: 0; background: transparent; color: var(--editorColor50); font-size: 11px !important; }
+.text-button { padding: 0; border: 0; background: transparent; color: var(--editorColor50); font-size: 0.846154em !important; }
 .text-button:hover:enabled { color: var(--themeColor); }
 .reconnect { margin-left: auto; }
 .chat-messages { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 18px 24px; overflow-wrap: anywhere; }
@@ -617,14 +658,14 @@ onBeforeUnmount(() => {
 .chat-message.assistant { padding-right: 8px; }
 .chat-error { color: var(--deleteColor); }
 .undo-button { margin-top: 7px; }
-.thinking { margin-top: 20px !important; color: var(--editorColor50); font-size: 12px; }
+.thinking { margin-top: 20px !important; color: var(--editorColor50); font-size: 0.923077em; }
 .chat-composer { flex-shrink: 0; margin: 0 14px 14px; border: 1px solid var(--editorColor10); border-radius: 12px; background: var(--editorColor04); overflow: hidden; }
 .chat-composer:focus-within { border-color: var(--themeColor40); }
-.chat-composer textarea { display: block; width: 100%; min-height: 84px; max-height: 200px; padding: 12px 13px 4px; resize: vertical; border: 0; background: transparent; color: var(--editorColor80); font-size: 12px; line-height: 1.7; }
+.chat-composer textarea { display: block; width: 100%; min-height: 84px; max-height: 200px; padding: 12px 13px 4px; resize: vertical; border: 0; background: transparent; color: var(--editorColor80); font-size: 0.923077em; line-height: 1.7; }
 .chat-composer textarea:focus-visible { outline: none; }
 .chat-composer textarea::placeholder { color: var(--editorColor40); }
 .composer-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px; }
-.composer-tools select { min-width: 0; max-width: 240px; padding: 4px 2px; border: 0; border-radius: 4px; background: transparent; color: var(--editorColor60); font-size: 11px; text-overflow: ellipsis; }
+.composer-tools select { min-width: 0; max-width: 240px; padding: 4px 2px; border: 0; border-radius: 4px; background: transparent; color: var(--editorColor60); font-size: 0.846154em; text-overflow: ellipsis; }
 .composer-tools option { background: var(--editorBgColor); color: var(--editorColor80); }
 .send-button { background: var(--themeColor); color: var(--buttonPrimaryFontColor); }
 .send-button:hover:enabled { background: var(--themeColor90); }
