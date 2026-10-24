@@ -1,9 +1,9 @@
-MarkText AI 설치 안내
+MarkText Local 설치 안내
 
 버전: 0.21.2-ai.2 기반 로컬 검증 빌드 (한자 입력 수정·로컬 AI 관리 포함)
 대상: Apple Silicon Mac (M 시리즈), macOS 12 이상
 구성: Markdown 보기·편집, AI 채팅 편집과 되돌리기, 모델 선택, 채팅창 너비 조절, 문단 들여쓰기
-아이콘: MarkText AI 전용 앱 아이콘
+아이콘: M의 오른쪽 발이 칩으로 이어지는 MarkText Local 아이콘
 
 이 개선 작업은 yunju-baek/marktext-ai의 v0.21.2-ai.2를 기준으로 한다.
 원본 MarkText와 MarkText AI 개발자의 저작권·라이선스를 보존한다.
@@ -15,8 +15,8 @@ MarkText AI 설치 안내
 
 1. 앱 설치
 
-MarkText-AI-0.21.2-ai.2-arm64.dmg를 열고 MarkText AI.app을 Applications 폴더로 드래그한다.
-복사가 끝나면 응용 프로그램 폴더에서 MarkText AI를 실행한다.
+MarkText-Local-0.21.2-ai.2-arm64.dmg를 열고 MarkText Local.app을 Applications 폴더로 드래그한다.
+복사가 끝나면 응용 프로그램 폴더에서 MarkText Local을 실행한다.
 설치 디스크는 Finder에서 추출한다.
 
 이 배포본은 로컬 ad-hoc 서명을 사용한다. Apple Developer ID 서명·공증은 미적용 상태다.
@@ -42,7 +42,7 @@ Codex CLI 설치 안내: https://developers.openai.com/codex/cli/
 
 이미 Codex CLI를 설치한 Mac은 codex login status로 로그인 상태를 확인한다.
 이 앱의 AI 기능은 Codex CLI 0.159.2에서 확인했다.
-로그인을 마치면 MarkText AI를 다시 실행하고 오른쪽 위 AI 버튼을 누른다.
+로그인을 마치면 MarkText Local을 다시 실행하고 오른쪽 위 AI 버튼을 누른다.
 모델을 선택하고 채팅에 편집 요청을 입력한다.
 
 로컬 AI는 OpenAI 호환 서버를 직접 실행한 뒤 사용한다.
@@ -71,7 +71,7 @@ AI 요청 시 현재 문서 전체와 최근 대화가 선택한 Codex 또는 �
 3. 기본 Markdown 앱 설정
 
 Finder에서 .md 파일 하나를 선택하고 Command+I로 정보 창을 연다.
-다음으로 열기에서 MarkText AI를 선택한 뒤 모두 변경을 누른다.
+다음으로 열기에서 MarkText Local을 선택한 뒤 모두 변경을 누른다.
 .markdown 등 다른 확장자도 같은 방법으로 설정한다.
 
 4. 편집 방법
@@ -91,3 +91,6 @@ AI 편집 직후 채팅의 되돌리기로 직전 내용을 복구할 수 있다
 원본 저작권: Copyright (c) 2017-present Luo Ran; Copyright (c) 2018-present MarkText Contributors
 라이선스: MIT (동봉한 LICENSE.txt와 앱의 THIRD-PARTY-LICENSES.txt 참조)
 이 개선 작업의 문제 보고: https://github.com/gromob/marktext-ai/issues
+
+앱 표시 이름: MarkText Local / 프로젝트 별칭: AJ
+기존 설정과 복구 데이터를 유지하기 위해 앱 ID와 MarkText AI 설정 폴더 이름은 보존한다.

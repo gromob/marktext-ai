@@ -1,4 +1,6 @@
-# MarkText AI 개선 작업
+# MarkText Local (AJ)
+
+프로젝트 별칭은 **AJ**다. 기존 AI를 수열의 항 $A_i$로 보고 그 변형을 $A_j$로 표현한다. 앱 아이콘은 M의 오른쪽 발을 단순한 칩으로 바꿔 로컬 AI 지원을 나타낸다.
 
 Markdown 문서 옆의 채팅창에서 질문하거나 문서 수정을 요청한다. 기존 Codex 연결을 유지하면서 로컬 OpenAI 호환 서버를 선택할 수 있다.
 
@@ -54,11 +56,11 @@ pnpm -C packages/desktop exec playwright test test/e2e/ai-editing.spec.ts test/e
 ./scripts/build-ai-mac.sh
 ```
 
-Apple Silicon Mac과 macOS 12 이상을 대상으로 `.app`·DMG·ZIP을 `dist/`에 생성한다. 파일 이름은 패키지 버전에 따라 `MarkText-AI-<version>-arm64`를 사용한다. 현재 패키지 번호는 기준 `0.21.2-ai.2`를 유지한 로컬 검증용이며, 공개 설치판에는 새 버전을 사용해야 한다.
+Apple Silicon Mac과 macOS 12 이상을 대상으로 `.app`·DMG·ZIP을 `dist/`에 생성한다. 파일 이름은 패키지 버전에 따라 `MarkText-Local-<version>-arm64`를 사용한다. 현재 패키지 번호는 기준 `0.21.2-ai.2`를 유지한 로컬 검증용이며, 공개 설치판에는 새 버전을 사용해야 한다.
 
 빌드 스크립트는 임시 폴더에서 패키징하고 로컬 코드 서명·DMG 무결성을 검사하며 SHA-256 파일을 생성한다. 서명은 ad-hoc이고 Apple Developer ID 서명·공증은 적용하지 않았다. [설치 안내](INSTALL.ko.txt)를 DMG에 동봉한다. 소스는 Git으로, 설치판은 검토 후 GitHub Release 첨부 파일로 공개한다.
 
-앱 ID는 `local.marktext.ai`, 사용자 설정·복구 경로는 `~/Library/Application Support/MarkText AI`다. 사용자 문서·서버 키·앱 프로필·개인 도구 설정은 소스나 설치판에 포함하지 않는다.
+표시 이름은 **MarkText Local**이다. 기존 설정을 유지하기 위해 앱 ID는 `local.marktext.ai`, 사용자 설정·복구 경로는 `~/Library/Application Support/MarkText AI`다. 사용자 문서·서버 키·앱 프로필·개인 도구 설정은 소스나 설치판에 포함하지 않는다.
 
 ## 기반과 라이선스
 
@@ -67,3 +69,7 @@ Apple Silicon Mac과 macOS 12 이상을 대상으로 `.app`·DMG·ZIP을 `dist/`
 원본 기반: [MarkText v0.21.2](https://github.com/marktext/marktext/tree/v0.21.2), 커밋 `ae7a869c989950a3a56ce5c2f7fc0df12c652933`.
 
 Luo Ran과 MarkText Contributors의 저작권 고지 및 [MIT License](../../LICENSE), [NOTICE](../../NOTICE)를 보존한다. [원본 개발 문서](https://github.com/marktext/marktext/tree/v0.21.2/packages/website/content/docs/dev)와 기여 지침도 함께 참고한다.
+
+## 이름·아이콘 적용 확인 (2026-10-24)
+
+MarkText Local 이름과 M·칩 아이콘을 적용했다. AJ는 프로젝트 별칭이다. 타입 검사, 변경한 TS/Vue 파일 ESLint, 빌드 스크립트 구문 검사와 앱 시작·AI 글꼴 설정 E2E 2개가 통과했다. macOS arm64 앱·ZIP·DMG를 빌드했고 코드 서명 검사와 DMG 무결성 검사가 통과했다. 패키지의 표시 이름·실행 파일 이름 및 ICNS 일치도 확인했다. 이번 이름·아이콘 변경 후 전체 206개 검사를 다시 실행한 것은 아니다. 기존 설치 앱 교체와 공개 배포는 하지 않았다.

@@ -103,15 +103,15 @@
       "checkUpdates": "Check for Updates"
     },
     "marktext": {
-      "title": "MarkText",
-      "about": "About MarkText",
+      "title": "MarkText Local",
+      "about": "About MarkText Local",
       "checkUpdates": "Check for Updates...",
       "preferences": "Preferences",
       "services": "Services",
-      "hide": "Hide MarkText",
+      "hide": "Hide MarkText Local",
       "hideOthers": "Hide Others",
       "showAll": "Show All",
-      "quit": "Quit MarkText"
+      "quit": "Quit MarkText Local"
     },
     "view": {
       "view": "View",

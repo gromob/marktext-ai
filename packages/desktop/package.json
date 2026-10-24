@@ -1,7 +1,7 @@
 {
   "name": "marktext",
   "version": "0.21.2-ai.2",
-  "description": "MarkText AI — an independent AI editing fork of MarkText",
+  "description": "MarkText Local (AJ) — Markdown editing with local AI and Codex support",
   "main": "./out/main/index.js",
   "author": {
     "name": "Jocs",
@@ -25,10 +25,10 @@
       "url": "https://github.com/Tkaixiang"
     }
   ],
-  "homepage": "https://github.com/yunju-baek/marktext-ai",
+  "homepage": "https://github.com/gromob/marktext-ai",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yunju-baek/marktext-ai.git"
+    "url": "git+https://github.com/gromob/marktext-ai.git"
   },
   "scripts": {
     "minify-locales": "tsx ../../scripts/minify-locales.ts",

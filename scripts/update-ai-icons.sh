@@ -7,7 +7,7 @@ if [ "$#" -gt 1 ]; then
 fi
 
 project_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-source_icon=${1:-"$project_root/docs/assets/marktext-ai-icon.png"}
+source_icon=${1:-"$project_root/docs/assets/marktext-local-icon.png"}
 if [ ! -f "$source_icon" ]; then
   printf 'PNG source not found: %s\n' "$source_icon" >&2
   exit 1
@@ -38,7 +38,7 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 cp "$source_icon" "$icon_stage/source.png"
-iconset="$icon_stage/MarkTextAI.iconset"
+iconset="$icon_stage/MarkTextLocal.iconset"
 mkdir -p "$iconset"
 
 for icon_size in 16 32 128 256 512; do
@@ -61,8 +61,8 @@ done
 cd "$project_root"
 mkdir -p docs/assets packages/desktop/static packages/desktop/build/icons \
   packages/desktop/src/renderer/src/assets/images
-if ! cmp -s "$icon_stage/source.png" docs/assets/marktext-ai-icon.png; then
-  cp "$icon_stage/source.png" docs/assets/marktext-ai-icon.png
+if ! cmp -s "$icon_stage/source.png" docs/assets/marktext-local-icon.png; then
+  cp "$icon_stage/source.png" docs/assets/marktext-local-icon.png
 fi
 for icon_format in png icns ico; do
   cp "$icon_stage/icon.$icon_format" "packages/desktop/static/icon.$icon_format"
@@ -78,4 +78,4 @@ for icon_size in 16 24 32 48 64 128 256 512; do
   cp "$icon_stage/logo-$icon_size.png" "$icon_output/marktext.png"
 done
 
-printf 'Updated MarkText AI icons from: %s\n' "$source_icon"
+printf 'Updated MarkText Local icons from: %s\n' "$source_icon"

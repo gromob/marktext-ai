@@ -103,15 +103,15 @@
       "checkUpdates": "업데이트 확인"
     },
     "marktext": {
-      "title": "MarkText",
-      "about": "MarkText 정보",
+      "title": "MarkText Local",
+      "about": "MarkText Local 정보",
       "checkUpdates": "업데이트 확인...",
       "preferences": "환경설정",
       "services": "서비스",
-      "hide": "MarkText 숨기기",
+      "hide": "MarkText Local 숨기기",
       "hideOthers": "다른 앱 숨기기",
       "showAll": "모두 보기",
-      "quit": "MarkText 종료"
+      "quit": "MarkText Local 종료"
     },
     "view": {
       "view": "보기",

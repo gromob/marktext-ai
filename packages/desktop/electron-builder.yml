@@ -1,5 +1,5 @@
 appId: local.marktext.ai
-productName: MarkText AI
+productName: MarkText Local
 publish: null
 directories:
   buildResources: build

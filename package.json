@@ -1,9 +1,9 @@
 {
   "name": "marktext-monorepo",
   "version": "0.21.2-ai.2",
-  "description": "MarkText AI — an independent AI editing fork of MarkText",
+  "description": "MarkText Local (AJ) — Markdown editing with local AI and Codex support",
   "private": true,
-  "homepage": "https://github.com/yunju-baek/marktext-ai",
+  "homepage": "https://github.com/gromob/marktext-ai",
   "packageManager": "pnpm@10.33.4",
   "engines": {
     "node": ">=20.19.0",

@@ -2,8 +2,8 @@ import path from 'path'
 import { app } from 'electron'
 import { setLocalesDirectory } from 'common/i18n'
 
-// The fork owns its preferences, recovery files and single-instance lock.
-app.setName('MarkText AI')
+// Keep the existing profile path so renaming the app preserves settings and recovery files.
+app.setName('MarkText Local')
 app.setPath('userData', path.join(app.getPath('appData'), 'MarkText AI'))
 
 // A packaged app keeps `static/` beside the executable's resources; every other
