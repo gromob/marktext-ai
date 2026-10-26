@@ -21,7 +21,7 @@ test('local settings, authenticated editing, undo and provider selection use the
     req.on('data', chunk => { input += chunk })
     req.on('end', () => {
       requests.push(JSON.parse(input))
-      res.end(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: malformed ? 'invalid JSON' : JSON.stringify({ markdown: conversation ? '# Title\n\nOriginal paragraph.\n' : '# Title\n\nLocally revised.\n', summary: isSplash ? '저는 Splash 모델입니다.' : conversation ? '저는 local-test-model로 연결된 로컬 AI입니다.' : '로컬 모델로 수정했습니다.' }) } }] }))
+      res.end(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: malformed ? 'invalid JSON' : JSON.stringify({ markdown: conversation ? null : '# Title\n\nLocally revised.\n', summary: isSplash ? '저는 Splash 모델입니다.' : conversation ? '저는 local-test-model로 연결된 로컬 AI입니다.' : '로컬 모델로 수정했습니다.' }) } }] }))
     })
   })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
@@ -39,6 +39,7 @@ test('local settings, authenticated editing, undo and provider selection use the
     await expect(page.getByTestId('ai-provider')).toHaveValue('local')
     await expect(page.getByTestId('ai-model').locator('option[value="local:local-test-model"]')).toHaveCount(1)
     await page.getByTestId('ai-model').selectOption('local:local-test-model')
+    await page.getByTestId('ai-mode').click()
     await page.getByTestId('ai-instruction').fill('문장을 수정하세요.')
     await page.getByTestId('ai-generate').click()
     await expect(page.locator('.editor-component')).toContainText('Locally revised.')
@@ -56,6 +57,7 @@ test('local settings, authenticated editing, undo and provider selection use the
 
     malformed = false
     conversation = true
+    await page.getByTestId('ai-mode').click()
     await page.getByTestId('ai-instruction').fill('너는 누구야?')
     await page.getByTestId('ai-generate').click()
     await expect(page.getByTestId('ai-message-assistant').last()).toHaveText('저는 local-test-model로 연결된 로컬 AI입니다.')

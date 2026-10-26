@@ -1,6 +1,13 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as LocalHttpModule from '../../../src/main/ai/localHttp'
+import { LocalHttpError, requestLocalHttp } from '../../../src/main/ai/localHttp'
 import { LocalRewriter } from '../../../src/main/ai/local'
+
+vi.mock('../../../src/main/ai/localHttp', async(importOriginal) => ({
+  ...await importOriginal<typeof LocalHttpModule>(),
+  requestLocalHttp: vi.fn()
+}))
 
 const request = { requestId: 'one', model: 'qwen3.8-flash-next-iq3_xxs', instruction: '제목 수정', markdown: '# 원문\n', history: [{ role: 'user' as const, content: '문맥' }] }
 const completion = (content = JSON.stringify({ markdown: '# 수정\n', summary: '제목 수정' }), finish = 'stop') =>
@@ -9,11 +16,11 @@ let fetcher: ReturnType<typeof vi.fn>
 let service: LocalRewriter
 
 beforeEach(() => {
-  fetcher = vi.fn()
-  vi.stubGlobal('fetch', fetcher)
+  fetcher = vi.mocked(requestLocalHttp)
+  fetcher.mockReset()
   service = new LocalRewriter(() => ({ baseUrl: 'http://localhost:8081/v1', apiKey: 'test-secret' }), 100)
 })
-afterEach(() => { service.dispose(); vi.unstubAllGlobals() })
+afterEach(() => { service.dispose() })
 
 describe('local OpenAI-compatible transport', () => {
   it('uses the selected model, history and key only at the configured endpoint', async() => {
@@ -22,7 +29,6 @@ describe('local OpenAI-compatible transport', () => {
     const [url, options] = fetcher.mock.calls[0]
     expect(url).toBe('http://localhost:8081/v1/chat/completions')
     expect(options.headers.Authorization).toBe('Bearer test-secret')
-    expect(options.redirect).toBe('error')
     const body = JSON.parse(options.body)
     expect(body.model).toBe(request.model)
     expect(body.stream).toBe(false)
@@ -56,6 +62,50 @@ describe('local OpenAI-compatible transport', () => {
     })
   })
 
+  it.each(['local', 'splash'] as const)('preserves a large document locally when %s answers without edits', async(provider) => {
+    const local = new LocalRewriter(() => ({ baseUrl: 'http://localhost:8081/v1', apiKey: '' }), 100, provider)
+    const markdown = '# 수학\n\n' + '본문과 공백을 그대로 보존합니다.\n'.repeat(5_000)
+    fetcher.mockResolvedValue(completion(JSON.stringify({ markdown: null, summary: '문서에 대한 답변입니다.' })))
+    try {
+      expect(await local.rewrite(1, { ...request, markdown, instruction: '문서의 주제는 무엇인가요?' })).toEqual({
+        markdown, summary: '문서에 대한 답변입니다.'
+      })
+      const prompt = JSON.parse(fetcher.mock.calls[0][1].body).messages[0].content
+      expect(prompt).toContain('set markdown to null')
+      expect(prompt).toContain('Do not copy or reproduce the document')
+    } finally { local.dispose() }
+  })
+
+  it.each(['local', 'splash'] as const)('enforces question mode for %s even if the model returns edited text', async(provider) => {
+    const local = new LocalRewriter(() => ({ baseUrl: 'http://localhost/v1', apiKey: '' }), 100, provider)
+    try {
+      fetcher.mockResolvedValueOnce(completion(JSON.stringify({ summary: '답변만 반환합니다.' })))
+      expect(await local.rewrite(1, { ...request, mode: 'ask' })).toMatchObject({ markdown: request.markdown, summary: '답변만 반환합니다.' })
+      fetcher.mockResolvedValueOnce(completion(JSON.stringify({ markdown: 'unwanted edit', summary: '본문은 보호됩니다.' })))
+      expect((await local.rewrite(1, { ...request, mode: 'ask' })).markdown).toBe(request.markdown)
+      expect(JSON.parse(fetcher.mock.calls[0][1].body).messages[0].content).toContain('Never edit the document')
+      fetcher.mockResolvedValueOnce(completion())
+      expect((await local.rewrite(1, { ...request, mode: 'edit' })).markdown).toBe('# 수정\n')
+    } finally { local.dispose() }
+  })
+
+  it('reads actual context metadata, uses saved output budgets and applies per-model timeouts', async() => {
+    const local = new LocalRewriter(() => ({ baseUrl: 'http://localhost/v1', apiKey: '', models: [{ id: request.model, name: 'Test', outputTokens: 2048, timeoutSeconds: 900 }] }))
+    const timer = vi.spyOn(globalThis, 'setTimeout')
+    try {
+      fetcher.mockResolvedValueOnce(Response.json({ data: [{ id: request.model, meta: { n_ctx: 131072, n_ctx_train: 999999 } }] }))
+      expect((await local.models())[0].contextWindow).toBe(131072)
+      fetcher.mockResolvedValueOnce(completion(JSON.stringify({ summary: '답변' })))
+      const history = Array.from({ length: 30 }, (_, index) => ({ role: index % 2 ? 'assistant' as const : 'user' as const, content: `message ${index}` }))
+      const result = await local.rewrite(1, { ...request, mode: 'ask', history })
+      expect(result.context).toMatchObject({ contextWindow: 131072, retainedMessages: 30, droppedMessages: 0 })
+      const body = JSON.parse(fetcher.mock.calls[1][1].body)
+      expect(body.max_tokens).toBe(2048)
+      expect(body.messages).toHaveLength(33)
+      expect(timer).toHaveBeenCalledWith(expect.any(Function), 900_000)
+    } finally { timer.mockRestore(); local.dispose() }
+  })
+
   it('discovers only valid IDs supplied by this server', async() => {
     fetcher.mockResolvedValue(Response.json({ data: [{ id: request.model }, { id: '../bad model' }, { id: request.model }] }))
     expect(await service.models()).toEqual([{ id: request.model, name: request.model }])
@@ -77,6 +127,12 @@ describe('local OpenAI-compatible transport', () => {
     expect(await service.status()).toMatchObject({ available: false, loggedIn: false })
     fetcher.mockRejectedValueOnce(new TypeError('network failed'))
     expect(await service.status()).toMatchObject({ available: false, loggedIn: false })
+  })
+
+  it.each(['ETIMEDOUT', 'ECONNABORTED'])('reports transport timeout %s separately from connection failure', async(code) => {
+    fetcher.mockRejectedValue(new LocalHttpError(code))
+    await expect(service.rewrite(1, request)).rejects.toThrow('대기 시간')
+    expect(fetcher).toHaveBeenCalledTimes(1)
   })
 
   it('requires an explicit model without sending a request', async() => {

@@ -122,6 +122,30 @@
               required
               maxlength="200"
             ></label>
+            <label>문맥 한도 (토큰, 비우면 서버 정보 / 미확인 시 8192)<input
+              :value="model.contextWindow"
+              aria-label="모델 문맥 한도"
+              type="number"
+              min="2048"
+              max="2097152"
+              @input="setLimit(model, 'contextWindow', $event)"
+            ></label>
+            <label>질문 출력·추론 예산 (토큰, 비우면 자동)<input
+              :value="model.outputTokens"
+              aria-label="모델 출력 예산"
+              type="number"
+              min="128"
+              max="65536"
+              @input="setLimit(model, 'outputTokens', $event)"
+            ></label>
+            <label>응답 대기 (초, 기본 600)<input
+              :value="model.timeoutSeconds"
+              aria-label="모델 응답 대기"
+              type="number"
+              min="60"
+              max="3600"
+              @input="setLimit(model, 'timeoutSeconds', $event)"
+            ></label>
             <button
               type="button"
               aria-label="모델 삭제"
@@ -173,6 +197,7 @@
         </p>
       </fieldset>
     </form>
+    <p>문맥 한도는 학습 시 최대값이 아니라 서버에 실제 할당된 값을 입력하세요. 토큰은 UTF-8 바이트로 보수적으로 추정하며 정확한 토크나이저 계산은 아닙니다. 캐시 재사용은 서버 지원에 따라 달라집니다.</p>
     <p>서버 실행과 모델 로딩은 직접 수행해야 합니다.</p>
   </section>
 </template>
@@ -192,6 +217,11 @@ const apiKey = ref('')
 const hasApiKey = ref(false)
 const removeKey = ref(false)
 const models = ref<AiModel[]>([])
+const setLimit = (model: AiModel, key: 'contextWindow' | 'outputTokens' | 'timeoutSeconds', event: Event) => {
+  const value = (event.target as HTMLInputElement).value
+  if (!value) delete model[key]
+  else model[key] = Number(value)
+}
 const discovered = ref<AiModel[]>([])
 const working = ref(false)
 const confirmDelete = ref(false)
@@ -232,7 +262,7 @@ const persist = async (connectionOnly = false) => {
   const storedModels = saved.value?.models ?? props.catalogs.find(catalog => catalog.provider === selected.value)?.models ?? []
   const server = await window.electron.ai.saveServer({
     ...(saved.value ? { id: saved.value.id } : {}), name: name.value, baseUrl: baseUrl.value,
-    models: (connectionOnly ? storedModels : models.value).map(model => ({ id: model.id, name: model.name })),
+    models: (connectionOnly ? storedModels : models.value).map(model => ({ ...model })),
     ...(removeKey.value ? { apiKey: '' } : apiKey.value ? { apiKey: apiKey.value } : {})
   })
   servers.value = await window.electron.ai.servers()

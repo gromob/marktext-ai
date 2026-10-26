@@ -11,6 +11,8 @@ This is an independent, unofficial fork based on [MarkText AI](https://github.co
 ## Features
 
 - Retains the existing Markdown editor and Codex connection.
+- Switches between question/analysis and document editing with the mode button or **Shift+Tab** in the AI input. Question mode never applies document changes.
+- Accumulates question context within model-specific budgets, supports **/new**, and offers configurable local response timeouts.
 - Adds, edits, and removes OpenAI-compatible local AI servers and models, with model discovery.
 - Improves macOS Korean-to-Hanja conversion, undo, and caret restoration.
 - Provides persistent font size controls for AI conversations, input fields, and menus.
@@ -52,6 +54,14 @@ The detailed guides and validation records below are currently in Korean.
 - [Report an issue](https://github.com/gromob/marktext-ai/issues)
 
 The alias AJ treats AI as a sequence term $A_i$ and its variation as $A_j$.
+
+## Known limitations before a public release
+
+- A discovered context limit can become a saved override when connection settings are saved. After changing the server's runtime context, clear or correct the registered model's context field so it follows the current server value. Separating discovered values from explicit overrides remains follow-up work.
+- Codex question mode currently uses a conservative 8192-token context budget without a model-specific adjustment control. Some documents are rejected before the CLI runs; local model settings do not change this Codex limit.
+- The local HTTP five-minute timeout issue has been fixed and verified with a response delayed by 310 seconds. See the [HTTP timeout validation record (Korean)](docs/ai-preview/F1-HTTP-TIMEOUT-VALIDATION.ko.md).
+
+These changes are available on the development branch; they are not a public release. Actual macOS IME behavior and local-server inference/cache performance require separate user validation.
 
 ## Attribution and license
 

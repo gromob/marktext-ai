@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import Store from 'electron-store'
+import { validContextWindow, validOutputTokens, validTimeoutSeconds } from '@shared/aiContext'
 import { isModelId } from './codexModels'
 import type { AiConnectionSettings, AiConnectionUpdate, AiLocalServer, AiLocalServerUpdate, AiProvider } from '@shared/types/ai'
 
@@ -107,13 +108,24 @@ export class AiConnectionStore {
     if (!Array.isArray(update.models) || update.models.length > 200 || update.models.some(model => !model || !isModelId(model.id) || typeof model.name !== 'string' || !model.name.trim() || model.name.length > 200)) {
       throw new Error('모델 ID와 이름을 확인하세요. 모델은 서버당 200개까지 등록할 수 있습니다.')
     }
+    for (const model of update.models) {
+      if ((model.contextWindow !== undefined && !validContextWindow(model.contextWindow)) ||
+        (model.outputTokens !== undefined && !validOutputTokens(model.outputTokens)) ||
+        (model.timeoutSeconds !== undefined && !validTimeoutSeconds(model.timeoutSeconds)) ||
+        (model.contextWindow !== undefined && model.outputTokens !== undefined && model.outputTokens + 1024 >= model.contextWindow)) {
+        throw new Error('문맥은 2048–2097152 토큰, 출력 예산은 128–65536 토큰, 대기 시간은 60–3600초로 입력하세요. 문맥에는 입력 여유도 필요합니다.')
+      }
+    }
     if (new Set(update.models.map(model => model.id)).size !== update.models.length) throw new Error('같은 모델 ID를 중복 등록할 수 없습니다.')
     const previous = update.id === undefined ? undefined : this.find(update.id)
     if (!previous && this.savedServers().length >= 20) throw new Error('서버는 20개까지 등록할 수 있습니다.')
     const id = previous?.id ?? `server-${randomUUID()}`
     this.writeServer({ id, name: update.name.trim(), baseUrl,
       ...this.keyUpdate(update.apiKey, previous),
-      models: update.models.map(model => ({ id: model.id, name: model.name.trim() })) })
+      models: update.models.map(model => ({ id: model.id, name: model.name.trim(),
+        ...(model.contextWindow !== undefined ? { contextWindow: model.contextWindow } : {}),
+        ...(model.outputTokens !== undefined ? { outputTokens: model.outputTokens } : {}),
+        ...(model.timeoutSeconds !== undefined ? { timeoutSeconds: model.timeoutSeconds } : {}) })) })
     const server = this.servers().find(server => server.id === id)
     if (!server) throw new Error('서버 설정을 다시 읽을 수 없습니다.')
     return server

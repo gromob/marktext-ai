@@ -58,6 +58,7 @@ const finishRequest = (app: ElectronApplication): Promise<void> =>
   })
 
 const send = async(page: Page, instruction: string): Promise<void> => {
+  if ((await page.getByTestId('ai-mode').getAttribute('aria-pressed')) === 'false') await page.getByTestId('ai-mode').click()
   await page.getByTestId('ai-instruction').fill(instruction)
   await expect(page.getByTestId('ai-generate')).toBeEnabled()
   await page.getByTestId('ai-generate').click()

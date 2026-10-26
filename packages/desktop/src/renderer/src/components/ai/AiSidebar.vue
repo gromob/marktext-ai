@@ -196,19 +196,53 @@
         class="thinking"
         role="status"
       >
-        {{ cancelling ? '요청을 취소하고 있어요…' : '문서를 편집하고 있어요…' }}
+        {{ cancelling ? '요청을 취소하고 있어요…' : activeRequest?.mode === 'ask' ? '문서를 읽고 답변하고 있어요…' : '문서를 편집하고 있어요…' }} ({{ elapsedSeconds }}초)
       </p>
     </div>
     <form
+      v-show="!showManager"
       class="chat-composer"
       @submit.prevent="send"
     >
+      <div class="mode-tools">
+        <button
+          type="button"
+          class="text-button"
+          data-testid="ai-mode"
+          :aria-pressed="mode === 'edit'"
+          :disabled="busy"
+          title="질문·분석 / 문서 편집 전환 (Shift+Tab)"
+          @mousedown.prevent
+          @click="toggleMode"
+        >
+          {{ mode === 'ask' ? '질문·분석' : '문서 편집' }} · ⇧Tab
+        </button>
+        <span>{{ mode === 'ask' ? '본문을 변경하지 않습니다' : '수정 결과를 본문에 적용합니다' }}</span>
+        <button
+          type="button"
+          class="text-button"
+          data-testid="ai-new-chat"
+          title="현재 문서의 대화만 초기화 (/new)"
+          :disabled="busy"
+          @mousedown.prevent
+          @click="newConversation"
+        >
+          새 대화
+        </button>
+      </div>
+      <p
+        v-if="provider !== 'codex'"
+        class="context-status"
+        data-testid="ai-context-status"
+      >
+        문맥 {{ selectedLimits.contextWindow }} 토큰{{ selectedModelInfo?.contextWindow ? '' : ' (미확인·기본값)' }} · 출력·추론 예약 {{ selectedLimits.outputTokens }} · 대기 {{ selectedLimits.timeoutSeconds }}초 · 보수적 추정
+      </p>
       <textarea
         id="ai-instruction"
         v-model="draft"
         data-testid="ai-instruction"
         aria-label="AI에게 요청"
-        placeholder="문서에 대해 요청하세요"
+        :placeholder="mode === 'ask' ? '문서에 대해 질문하세요' : '문서를 어떻게 수정할까요?'"
         rows="3"
         maxlength="8000"
         :disabled="busy"
@@ -267,7 +301,7 @@
           type="submit"
           data-testid="ai-generate"
           aria-label="보내기"
-          :disabled="checkingConnection || savingSettings || showManager || !connected || !draft.trim() || loadingModels || !modelAvailable"
+          :disabled="busy || !draft.trim() || (draft.trim() !== '/new' && (checkingConnection || savingSettings || showManager || !connected || loadingModels || !modelAvailable))"
         >
           <svg
             viewBox="0 0 20 20"
@@ -283,10 +317,11 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
+import { contextSettings } from '@shared/aiContext'
 import { MIN_AI_FONT_SIZE, MAX_AI_FONT_SIZE } from '@shared/aiTypography'
 import { usePreferencesStore } from '@/store/preferences'
 import LocalAiManager from './LocalAiManager.vue'
-import type { AiProvider } from '@shared/types/ai'
+import type { AiMode, AiProvider } from '@shared/types/ai'
 import { localModelOptions, localModelValue, type LocalAiCatalog, type LocalAiProvider } from '@/util/localAiModels'
 import { useEditorStore } from '@/store/editor'
 import { useAiEditorStore } from '@/store/aiEditor'
@@ -312,6 +347,8 @@ const { currentFile } = storeToRefs(useEditorStore())
 const currentDocumentId = computed(() => currentFile.value?.id || '')
 const conversations = reactive(new Map<string, ChatMessage[]>())
 const drafts = reactive(new Map<string, string>())
+const mode = ref<AiMode>('ask')
+const toggleMode = () => { if (!busy.value) mode.value = mode.value === 'ask' ? 'edit' : 'ask' }
 const currentMessages = computed(() => conversations.get(currentDocumentId.value) || [])
 const draft = computed({
   get: () => drafts.get(currentDocumentId.value) || '',
@@ -359,8 +396,13 @@ const menuOptions = computed(() => provider.value === 'codex'
   ? models.value.map(model => ({ ...model, value: model.id }))
   : localModelOptions(localCatalogs.value, selectedModel.value ? { provider: provider.value, id: selectedModel.value } : undefined))
 const menuModel = computed(() => provider.value === 'codex' ? selectedModel.value : selectedModel.value ? localModelValue(provider.value, selectedModel.value) : '')
+const selectedModelInfo = computed(() => menuOptions.value.find(model => model.value === menuModel.value))
+const selectedLimits = computed(() => contextSettings(selectedModelInfo.value))
 const modelAvailable = computed(() => provider.value === 'codex' || localModelOptions(localCatalogs.value).some(model => model.available && model.value === menuModel.value))
-const activeRequest = ref<{ id: string; documentId: string } | null>(null)
+const activeRequest = ref<{ id: string; documentId: string; mode: AiMode; startedAt: number } | null>(null)
+const clock = ref(Date.now())
+const elapsedSeconds = computed(() => activeRequest.value ? Math.max(0, Math.floor((clock.value - activeRequest.value.startedAt) / 1000)) : 0)
+let clockTimer: ReturnType<typeof setInterval> | undefined
 const cancelling = ref(false)
 const busy = computed(() => activeRequest.value !== null)
 const errorText = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause)).replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '')
@@ -379,7 +421,14 @@ const clearUndoLinks = () => {
     for (const message of messages) message.canUndo = false
   }
 }
+const newConversation = () => {
+  if (busy.value) return
+  conversations.delete(currentDocumentId.value)
+  drafts.set(currentDocumentId.value, '')
+  addMessage(currentDocumentId.value, { role: 'assistant', content: '새 대화를 시작했습니다. 현재 문서와 모델 설정은 유지합니다.', history: false })
+}
 const requestHistory = (documentId: string) => {
+  if (mode.value === 'ask') return (conversations.get(documentId) || []).filter(message => message.history).map(({ role, content }) => ({ role, content }))
   const recent = (conversations.get(documentId) || []).filter(message => message.history).slice(-10)
   const history: Array<{ role: 'user' | 'assistant'; content: string }> = []
   let remaining = 24000
@@ -530,6 +579,7 @@ const refreshManagedServers = async () => {
   await checkConnection()
 }
 const send = async () => {
+  if (draft.value.trim() === '/new') { newConversation(); return }
   if (busy.value || checkingConnection.value || savingSettings.value || !connected.value || showManager.value || loadingModels.value || !draft.value.trim() || !modelAvailable.value) return
   const documentId = currentDocumentId.value
   let snapshot
@@ -537,21 +587,24 @@ const send = async () => {
     addReply(documentId, errorText(cause), true)
     return
   }
+  const requestMode = mode.value
   const instruction = draft.value.trim()
   const history = requestHistory(documentId)
   const userMessageId = addMessage(documentId, { role: 'user', content: instruction, history: false })
   drafts.set(documentId, '')
   const requestId = crypto.randomUUID()
-  activeRequest.value = { id: requestId, documentId }
+  clock.value = Date.now()
+  activeRequest.value = { id: requestId, documentId, mode: requestMode, startedAt: clock.value }
   try {
-    const result = await window.electron.ai.rewrite({ requestId, provider: provider.value, instruction, markdown: snapshot.markdown, model: selectedModel.value || undefined, history })
+    const result = await window.electron.ai.rewrite({ requestId, mode: requestMode, provider: provider.value, instruction, markdown: snapshot.markdown, model: selectedModel.value || undefined, history })
     if (activeRequest.value?.id !== requestId || cancelling.value) return
-    if (result.markdown === snapshot.markdown) {
+    if (requestMode === 'ask' || result.markdown === snapshot.markdown) {
       const current = aiEditor.capture('document')
       if (current.documentId !== snapshot.documentId || current.documentMarkdown !== snapshot.documentMarkdown) {
         throw new Error('문서가 바뀌었습니다. 현재 내용을 기준으로 다시 요청해주세요.')
       }
       addReply(documentId, result.summary?.trim() || '문서를 변경하지 않았습니다.')
+      if (result.context?.droppedMessages) addMessage(documentId, { role: 'assistant', content: `문맥 한도로 이전 메시지 ${result.context.droppedMessages}개는 이번 요청에서 제외했습니다. /new로 새 대화를 시작할 수 있습니다.`, history: false })
     } else {
       aiEditor.apply(snapshot, result.markdown)
       clearUndoLinks()
@@ -590,6 +643,12 @@ const undoRevision = (message: ChatMessage) => {
   }
 }
 const handleComposerKey = (event: KeyboardEvent) => {
+  if (event.key === 'Tab' && event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    event.preventDefault()
+    event.stopPropagation()
+    if (!event.repeat) toggleMode()
+    return
+  }
   if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229) {
     event.preventDefault()
     void send()
@@ -609,10 +668,12 @@ watch(() => props.visible, visible => {
   else void cancelRewrite()
 })
 onMounted(() => {
+  clockTimer = setInterval(() => { clock.value = Date.now() }, 1000)
   void initializeConnection()
   window.addEventListener('beforeunload', releaseRequest)
 })
 onBeforeUnmount(() => {
+  if (clockTimer) clearInterval(clockTimer)
   releaseRequest()
   window.removeEventListener('beforeunload', releaseRequest)
 })
@@ -664,6 +725,9 @@ onBeforeUnmount(() => {
 .chat-composer textarea { display: block; width: 100%; min-height: 84px; max-height: 200px; padding: 12px 13px 4px; resize: vertical; border: 0; background: transparent; color: var(--editorColor80); font-size: 0.923077em; line-height: 1.7; }
 .chat-composer textarea:focus-visible { outline: none; }
 .chat-composer textarea::placeholder { color: var(--editorColor40); }
+.mode-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 7px 12px 0; font-size: 0.846154em; }
+.context-status { margin: 4px 12px 0; font-size: 0.8em; color: var(--editorColor50); }
+.mode-tools span { color: var(--editorColor50); }
 .composer-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px; }
 .composer-tools select { min-width: 0; max-width: 240px; padding: 4px 2px; border: 0; border-radius: 4px; background: transparent; color: var(--editorColor60); font-size: 0.846154em; text-overflow: ellipsis; }
 .composer-tools option { background: var(--editorBgColor); color: var(--editorColor80); }

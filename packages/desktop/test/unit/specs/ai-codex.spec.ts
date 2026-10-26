@@ -77,6 +77,26 @@ describe('Codex Markdown rewriting', () => {
     await expect(access(calls[0].cwd)).rejects.toThrow()
   })
 
+  it('uses an answer-only schema and discards model edits in question mode', async() => {
+    handleInvocation = async({ child, args }) => {
+      const schema = JSON.parse(await readFile(args[args.indexOf('--output-schema') + 1], 'utf8'))
+      expect(schema.required).toEqual(['summary'])
+      expect(schema.properties).not.toHaveProperty('markdown')
+      await writeFile(args[args.indexOf('--output-last-message') + 1], JSON.stringify({ markdown: 'unwanted edit', summary: '답변입니다.' }))
+      child.emit('close', 0)
+    }
+    expect(await new CodexRewriter().rewrite(1, { ...request, mode: 'ask' })).toMatchObject({ markdown: request.markdown, summary: '답변입니다.' })
+    expect(calls[0].input).toContain('Never edit the document')
+  })
+
+  it('accepts an answer without document output in question mode', async() => {
+    handleInvocation = async({ child, args }) => {
+      await writeFile(args[args.indexOf('--output-last-message') + 1], JSON.stringify({ summary: '짧은 답변입니다.' }))
+      child.emit('close', 0)
+    }
+    expect((await new CodexRewriter().rewrite(1, { ...request, mode: 'ask' })).markdown).toBe(request.markdown)
+  })
+
   it('requires a structured Markdown result and cleans up failed responses', async() => {
     handleInvocation = async({ child, args }) => {
       await writeFile(args[args.indexOf('--output-last-message') + 1], '{"message":"wrong shape"}')
@@ -91,6 +111,7 @@ describe('Codex Markdown rewriting', () => {
     await expect(service.rewrite(1, { ...request, requestId: '../bad' })).rejects.toThrow('요청 형식')
     await expect(service.rewrite(1, { ...request, instruction: ' ' })).rejects.toThrow('요청 형식')
     await expect(service.rewrite(1, { ...request, markdown: 'x'.repeat(300_001) })).rejects.toThrow('요청 형식')
+    await expect(service.rewrite(1, { ...request, mode: 'bad' as 'ask' })).rejects.toThrow('요청 형식')
     expect(mocks.spawn).not.toHaveBeenCalled()
   })
 

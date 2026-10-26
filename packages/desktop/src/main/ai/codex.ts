@@ -5,7 +5,8 @@ import { join } from 'node:path'
 import { resolveCommand } from '../utils/resolveCommand'
 import { readCodexModels } from './codexModels'
 import { terminateCodexProcess } from './codexProcess'
-import { buildRewritePrompt, validateRequest } from './rewrite'
+import { fitConversation } from '@shared/aiContext'
+import { buildRewritePrompt, buildQuestionMessages, validateRequest } from './rewrite'
 import type { AiModel, AiRewriteRequest, AiRewriteResult, AiStatus } from '@shared/types/ai'
 
 const MAX_OUTPUT_BYTES = 2_000_000
@@ -146,7 +147,10 @@ export class CodexRewriter {
       directory = await mkdtemp(join(tmpdir(), 'marktext-ai-'))
       const schemaPath = join(directory, 'schema.json')
       const resultPath = join(directory, 'result.json')
-      await writeFile(schemaPath, JSON.stringify(outputSchema), { mode: 0o600 })
+      await writeFile(schemaPath, JSON.stringify(request.mode === 'ask' ? {
+        type: 'object', properties: { summary: { type: 'string' } },
+        required: ['summary'], additionalProperties: false
+      } : outputSchema), { mode: 0o600 })
       const disabledFeatures = [
         'shell_tool', 'unified_exec', 'apps', 'plugins', 'browser_use',
         'computer_use', 'image_generation', 'multi_agent', 'view_image',
@@ -163,7 +167,8 @@ export class CodexRewriter {
         '--output-schema', schemaPath, '--output-last-message', resultPath, '-'
       ]
       // stdin keeps document text out of process listings and shell parsing.
-      const prompt = buildRewritePrompt(request)
+      const conversation = request.mode === 'ask' ? fitConversation(buildQuestionMessages(request, 'codex'), request.history || [], request.instruction) : null
+      const prompt = conversation ? conversation.messages.map(message => `[${message.role}]\n${message.content}`).join('\n\n') : buildRewritePrompt(request)
       const result = await runProcess(command, args, directory, this.timeoutMs, controller.signal, prompt)
       if (result.code !== 0) {
         if (/rate.limit|usage.limit|quota/i.test(result.stderr + result.stdout)) {
@@ -179,6 +184,13 @@ export class CodexRewriter {
         parsed = JSON.parse(await readFile(resultPath, 'utf8'))
       } catch {
         throw new Error('AI 응답 형식을 확인할 수 없습니다. 다시 요청하세요.')
+      }
+      if (request.mode === 'ask') {
+        if (!parsed || typeof parsed !== 'object' || !('summary' in parsed) ||
+          typeof parsed.summary !== 'string' || !parsed.summary.trim() || parsed.summary.length > 128_000) {
+          throw new Error('AI 응답 형식을 확인할 수 없습니다. 다시 요청하세요.')
+        }
+        return { markdown: request.markdown, summary: parsed.summary, ...(conversation ? { context: { retainedMessages: conversation.retainedMessages, droppedMessages: conversation.droppedMessages, contextWindow: conversation.contextWindow, estimated: true } } : {}) }
       }
       if (!parsed || typeof parsed !== 'object' || !('markdown' in parsed) || typeof parsed.markdown !== 'string') {
         throw new Error('AI 응답 형식을 확인할 수 없습니다. 다시 요청하세요.')

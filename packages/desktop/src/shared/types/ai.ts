@@ -44,7 +44,10 @@ export interface AiConversationMessage {
   content: string
 }
 
+export type AiMode = 'ask' | 'edit'
+
 export interface AiRewriteRequest {
+  mode?: AiMode
   requestId: string
   provider?: AiProvider
   instruction: string
@@ -57,10 +60,14 @@ export interface AiModel {
   id: string
   name: string
   description?: string
+  contextWindow?: number
+  outputTokens?: number
+  timeoutSeconds?: number
   isDefault?: boolean
 }
 
 export interface AiRewriteResult {
+  context?: { retainedMessages: number; droppedMessages: number; contextWindow: number; estimated: boolean }
   markdown: string
   summary?: string
 }

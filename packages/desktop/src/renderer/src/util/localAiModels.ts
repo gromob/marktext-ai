@@ -32,7 +32,8 @@ export function localModelOptions(
     const catalog = catalogs.find(item => item.provider === provider)
     const preset = provider === 'local' || provider === 'splash' ? defaults[provider] : undefined
     const name = catalog?.name ? `${model.name} (${catalog.name})` : model.id === preset?.id ? preset.name : `${model.name} (${provider === 'local' ? 'Strata' : provider === 'splash' ? 'Splash' : provider})`
-    result.set(value, { ...model, provider, value, available, name: available ? name : `${name} · 연결/모델 확인 필요` })
+    const discovered = catalog?.models.find(item => item.id === model.id)
+    result.set(value, { ...discovered, ...model, provider, value, available, name: available ? name : `${name} · 연결/모델 확인 필요` })
   }
   for (const catalog of catalogs) {
     for (const model of catalog.registered ?? catalog.models) add(catalog.provider, model, !catalog.error && catalog.models.some(item => item.id === model.id))

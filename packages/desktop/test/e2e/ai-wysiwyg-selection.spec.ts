@@ -50,6 +50,7 @@ const requests = (app: ElectronApplication): Promise<ChatRequest[]> =>
   app.evaluate(() => (globalThis as unknown as { aiChatTest: MockState }).aiChatTest.requests)
 
 const send = async(page: Page): Promise<void> => {
+  if ((await page.getByTestId('ai-mode').getAttribute('aria-pressed')) === 'false') await page.getByTestId('ai-mode').click()
   await page.getByTestId('ai-instruction').fill('간결하게 다듬어 주세요.')
   await expect(page.getByTestId('ai-generate')).toBeEnabled()
   await page.getByTestId('ai-generate').click()
@@ -134,6 +135,7 @@ test('Shift+Enter adds a line, composing Enter stays in the input, and Enter sen
   try {
     await mockCodex(app)
     await page.getByTestId('ai-toggle').click()
+    await page.getByTestId('ai-mode').click()
     const input = page.getByTestId('ai-instruction')
     await input.fill('첫 문장')
     await expect(page.getByTestId('ai-generate')).toBeEnabled()

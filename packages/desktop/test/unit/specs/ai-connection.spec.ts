@@ -92,6 +92,18 @@ describe('user-managed local servers', () => {
     expect(store.local().apiKey).toBe('legacy-key')
   })
 
+  it('persists and validates model context, output and timeout settings without exposing keys', () => {
+    const store = new AiConnectionStore()
+    const model = { id: 'test-model', name: 'Test', contextWindow: 131072, outputTokens: 8192, timeoutSeconds: 900 }
+    const saved = store.saveServer({ name: 'Context', baseUrl: 'http://test.local/v1', apiKey: 'secret-key', models: [model] })
+    expect(saved.models).toEqual([model])
+    expect(JSON.stringify(store.servers())).not.toContain('secret-key')
+    for (const invalid of [{ contextWindow: 0 }, { timeoutSeconds: 5 }, { outputTokens: 100_000 }, { contextWindow: 4096, outputTokens: 4096 }]) {
+      expect(() => store.saveServer({ id: saved.id, name: saved.name, baseUrl: saved.baseUrl, models: [{ ...model, ...invalid }] })).toThrow('문맥')
+    }
+    expect(store.servers().find(server => server.id === saved.id)?.models).toEqual([model])
+  })
+
   it('does not resurrect deleted defaults or silently change the active provider', () => {
     const store = new AiConnectionStore()
     store.save({ provider: 'local', baseUrl: 'http://strata.test/v1', apiKey: 'old-key' })

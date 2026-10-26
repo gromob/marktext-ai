@@ -17,7 +17,7 @@ export const registerAiHandlers = (): void => {
     settings.local(provider)
     let local = locals.get(provider)
     if (!local) {
-      local = new LocalRewriter(() => settings.local(provider), 180_000, provider)
+      local = new LocalRewriter(() => ({ ...settings.local(provider), models: settings.servers().find(server => server.id === provider)?.models }), 600_000, provider)
       locals.set(provider, local)
     }
     return local
